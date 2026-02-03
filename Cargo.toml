@@ -3,6 +3,10 @@ name = "rein"
 version = "0.1.0"
 edition = "2021"
 description = "rein 3D Rendering Library"
+license = "MIT"
+repository = "https://github.com/MechanicalGirlDev/rein"
+keywords = ["3d", "graphics", "rendering", "wgpu", "urdf"]
+categories = ["graphics", "rendering", "game-development"]
 
 [features]
 default = ["window"]
