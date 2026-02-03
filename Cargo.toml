@@ -1,6 +1,6 @@
 [package]
 name = "rein"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "rein 3D Rendering Library"
 license = "MIT"
