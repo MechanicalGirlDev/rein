@@ -1,6 +1,6 @@
 # rein
 
-A [three-d](https://github.com/asny/three-d) style 3D rendering library built on [wgpu](https://github.com/gfx-rs/wgpu).
+3D rendering library built on [wgpu](https://github.com/gfx-rs/wgpu).
 
 ## Features
 
