@@ -63,6 +63,10 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
+## Acknowledgments
+
+This project is heavily inspired by [three-d](https://github.com/asny/three-d), a fantastic 3D rendering library for Rust. The architecture, API design, and many implementation patterns in rein are based on three-d's excellent work. We are deeply grateful to the three-d authors and contributors for creating such a well-designed and educational codebase.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
