@@ -101,7 +101,7 @@ where
         );
 
         // Create wgpu instance and surface
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
@@ -123,8 +123,9 @@ where
                 required_features: wgpu::Features::empty(),
                 required_limits: wgpu::Limits::default(),
                 memory_hints: wgpu::MemoryHints::Performance,
+                trace: Default::default(),
+                experimental_features: Default::default(),
             },
-            None,
         ))
         .expect("Failed to create device");
 

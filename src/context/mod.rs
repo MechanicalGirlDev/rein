@@ -26,7 +26,7 @@ impl WgpuContext {
 
     /// Create a new context asynchronously with default settings.
     pub async fn new_async(compatible_surface: Option<&wgpu::Surface<'_>>) -> anyhow::Result<Self> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             ..Default::default()
         });
@@ -37,19 +37,17 @@ impl WgpuContext {
                 compatible_surface,
                 force_fallback_adapter: false,
             })
-            .await
-            .ok_or_else(|| anyhow::anyhow!("Failed to find suitable GPU adapter"))?;
+            .await?;
 
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor {
-                    label: Some("rein device"),
-                    required_features: wgpu::Features::empty(),
-                    required_limits: wgpu::Limits::default(),
-                    memory_hints: wgpu::MemoryHints::Performance,
-                },
-                None,
-            )
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("rein device"),
+                required_features: wgpu::Features::empty(),
+                required_limits: wgpu::Limits::default(),
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: Default::default(),
+                experimental_features: Default::default(),
+            })
             .await?;
 
         Ok(Self::new(device, queue))

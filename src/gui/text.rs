@@ -64,8 +64,9 @@ impl TextRenderer {
         self.buffer.set_text(
             &mut self.font_system,
             text,
-            Attrs::new().family(Family::Monospace),
+            &Attrs::new().family(Family::Monospace),
             Shaping::Advanced,
+            None,
         );
     }
 
@@ -135,10 +136,12 @@ impl TextRenderer {
                         load: wgpu::LoadOp::Load,
                         store: wgpu::StoreOp::Store,
                     },
+                    depth_slice: None,
                 })],
                 depth_stencil_attachment: None,
                 timestamp_writes: None,
                 occlusion_query_set: None,
+                multiview_mask: None,
             });
 
             self.renderer

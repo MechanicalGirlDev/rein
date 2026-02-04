@@ -73,9 +73,9 @@ window.render_loop(state_init, |frame_input, state| {
 
 ## Dependencies
 
-- `wgpu` 23 - GPU backend
-- `glam` 0.29 - Math (Vec3, Mat4, etc.)
-- `nalgebra` 0.33 - Advanced linear algebra (used in URDF kinematics)
-- `urdf-rs` 0.8 - URDF parsing
+- `wgpu` 28 - GPU backend
+- `glam` 0.31 - Math (Vec3, Mat4, etc.)
+- `nalgebra` 0.34 - Advanced linear algebra (used in URDF kinematics)
+- `urdf-rs` 0.9 - URDF parsing
 - `winit` 0.30 - Window management (optional)
-- `glyphon` 0.7 - Text rendering (optional)
+- `glyphon` 0.10 - Text rendering (optional)

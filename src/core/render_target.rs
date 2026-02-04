@@ -91,6 +91,7 @@ impl<'a> RenderTarget<'a> {
                 load: clear.color_load_op(),
                 store: wgpu::StoreOp::Store,
             },
+            depth_slice: None,
         };
 
         let depth_attachment = self
@@ -110,6 +111,7 @@ impl<'a> RenderTarget<'a> {
             depth_stencil_attachment: depth_attachment,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         })
     }
 
