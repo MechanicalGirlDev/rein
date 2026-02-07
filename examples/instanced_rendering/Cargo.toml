@@ -1,0 +1,9 @@
+[package]
+name = "instanced_rendering"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rein = { path = "../.." }
+glam = "0.29"
+anyhow = "1"
