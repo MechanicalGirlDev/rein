@@ -1,41 +1,21 @@
-//! Rein 3D Rendering Library
+//! Rein 3D Engine
 //!
-//! A three-d style 3D rendering library built on wgpu.
+//! A 3D engine built on wgpu with ECS, physics, and GPU compute.
 //!
 //! # Architecture
 //!
 //! The library is organized into layers:
 //!
 //! 1. **context** - Core wgpu wrapper (Device, Queue)
-//! 2. **core** - Mid-level abstractions (buffers, textures, pipelines)
-//! 3. **renderer** - High-level rendering (cameras, materials, objects, lights)
-//! 4. **window** - Window management with winit (optional, feature = "window")
-//! 5. **gui** - Text rendering (optional, feature = "gui")
-//! 6. **urdf** - URDF robot model support
-//!
-//! # Example
-//!
-//! ```no_run
-//! use rein::{Window, WindowSettings, FrameOutput};
-//! use rein::renderer::{Camera, OrbitControl};
-//! use rein::urdf::RobotModel;
-//! use rein::core::ClearState;
-//! use glam::Vec3;
-//!
-//! fn main() -> anyhow::Result<()> {
-//!     let window = Window::new(WindowSettings::default().title("Robot Viewer"))?;
-//!
-//!     // State will be initialized in the render loop
-//!     struct State {
-//!         camera: Camera,
-//!         control: OrbitControl,
-//!         robot: Option<RobotModel>,
-//!     }
-//!
-//!     // ...
-//!     Ok(())
-//! }
-//! ```
+//! 2. **core** - GPU primitives (buffers, textures, pipelines)
+//! 3. **compute** - Compute shader utilities
+//! 4. **renderer** - High-level rendering (cameras, materials, geometry, lights)
+//! 5. **physics** - Rigid body simulation, collision detection (feature = "physics")
+//! 6. **ecs** - hecs ECS integration (feature = "ecs")
+//! 7. **engine** - Game loop with App trait (feature = "engine")
+//! 8. **window** - Window management with winit (feature = "window")
+//! 9. **gui** - Text rendering with glyphon (feature = "gui")
+//! 10. **urdf** - URDF robot model loading
 
 pub mod context;
 pub mod core;
@@ -49,13 +29,25 @@ pub mod window;
 #[cfg(feature = "gui")]
 pub mod gui;
 
+pub mod compute;
+
+#[cfg(feature = "ecs")]
+pub mod ecs;
+
+#[cfg(feature = "engine")]
+pub mod engine;
+
+#[cfg(feature = "physics")]
+pub mod physics;
+
 // Re-export commonly used types
 pub use context::WgpuContext;
 
 pub use core::{
-    BlendState, ClearState, CullState, DepthState, DepthTexture, IndexBuffer, InstanceBuffer,
-    InstanceData, PipelineBuilder, RawUniformBuffer, RenderTarget, Texture2D, Texture2DArray,
-    TextureCubeMap, UniformBuffer, VertexBuffer, VertexP, VertexPC, VertexPN, VertexPNUC,
+    BlendState, ClearState, ComputePipelineBuilder, CullState, DepthState, DepthTexture,
+    IndexBuffer, InstanceBuffer, InstanceData, PipelineBuilder, RawUniformBuffer, RenderTarget,
+    StorageBuffer, Texture2D, Texture2DArray, TextureCubeMap, UniformBuffer, VertexBuffer, VertexP,
+    VertexPC, VertexPN, VertexPNUC,
 };
 
 pub use renderer::{
@@ -73,12 +65,23 @@ pub use effect::{CopyEffect, Effect, EffectChain, FogEffect, FogMode, Fullscreen
 
 #[cfg(feature = "window")]
 pub use window::{
-    Event, FrameInput, FrameOutput, Key, Modifiers, MouseButton, Viewport, Window, WindowSettings,
-    screen_target,
+    screen_target, Event, FrameInput, FrameOutput, Key, Modifiers, MouseButton, Viewport, Window,
+    WindowSettings,
 };
 
 #[cfg(feature = "gui")]
 pub use gui::{TextBuilder, TextRenderer};
+
+pub use compute::{compute_workgroup_count, read_back, ComputeDispatcher};
+
+#[cfg(feature = "ecs")]
+pub use ecs::prelude::*;
+
+#[cfg(feature = "engine")]
+pub use engine::{run_app, App, GameLoopConfig, SystemContext};
+
+#[cfg(feature = "physics")]
+pub use physics::{PhysicsConfig, PhysicsWorld};
 
 // Re-export glam for convenience
 pub use glam;

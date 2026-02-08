@@ -1,9 +1,10 @@
 [package]
-name = "instanced_rendering"
+name = "engine_app"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rein = { path = "../.." }
+rein = { path = "../..", features = ["engine"] }
 glam = "0.31"
 anyhow = "1"
+hecs = "0.10"

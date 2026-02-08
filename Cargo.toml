@@ -2,16 +2,22 @@
 name = "rein"
 version = "0.1.1"
 edition = "2021"
-description = "rein 3D Rendering Library"
+description = "rein 3D Engine"
 license = "MIT"
 repository = "https://github.com/MechanicalGirlDev/rein"
-keywords = ["3d", "graphics", "rendering", "wgpu", "urdf"]
+keywords = ["3d", "graphics", "rendering", "wgpu", "urdf", "ecs", "physics"]
 categories = ["graphics", "rendering", "game-development"]
 
 [features]
 default = ["window"]
 window = ["dep:winit"]
 gui = ["dep:glyphon"]
+compute = []
+ecs = ["dep:hecs"]
+physics = ["ecs"]
+gpu-physics = ["physics"]
+engine = ["ecs", "window"]
+full = ["engine", "physics", "gpu-physics", "gui"]
 
 [dependencies]
 # GPU
@@ -26,10 +32,12 @@ glyphon = { version = "0.10", optional = true }
 
 # Math
 glam = "0.31"
-nalgebra = "0.34"
 
 # URDF
 urdf-rs = "0.9"
+
+# ECS (optional)
+hecs = { version = "0.10", optional = true }
 
 # Utilities
 tracing = "0.1"

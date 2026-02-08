@@ -257,6 +257,88 @@ pub struct Vertex {
     pub color: [f32; 3],
 }
 
+/// Builder for creating compute pipelines.
+pub struct ComputePipelineBuilder<'a> {
+    ctx: &'a WgpuContext,
+    label: Option<&'a str>,
+    shader_source: Option<&'a str>,
+    entry_point: &'a str,
+    bind_group_layouts: Vec<&'a wgpu::BindGroupLayout>,
+}
+
+impl<'a> ComputePipelineBuilder<'a> {
+    /// Create a new compute pipeline builder.
+    pub fn new(ctx: &'a WgpuContext) -> Self {
+        Self {
+            ctx,
+            label: None,
+            shader_source: None,
+            entry_point: "cs_main",
+            bind_group_layouts: Vec::new(),
+        }
+    }
+
+    /// Set the pipeline label.
+    pub fn label(mut self, label: &'a str) -> Self {
+        self.label = Some(label);
+        self
+    }
+
+    /// Set the shader source (WGSL).
+    pub fn shader(mut self, source: &'a str) -> Self {
+        self.shader_source = Some(source);
+        self
+    }
+
+    /// Set the compute shader entry point.
+    pub fn entry_point(mut self, entry: &'a str) -> Self {
+        self.entry_point = entry;
+        self
+    }
+
+    /// Add a bind group layout.
+    pub fn bind_group_layout(mut self, layout: &'a wgpu::BindGroupLayout) -> Self {
+        self.bind_group_layouts.push(layout);
+        self
+    }
+
+    /// Build the compute pipeline.
+    pub fn build(self) -> anyhow::Result<wgpu::ComputePipeline> {
+        let shader_source = self
+            .shader_source
+            .ok_or_else(|| anyhow::anyhow!("Shader source is required"))?;
+
+        let shader_module = self
+            .ctx
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: self.label,
+                source: wgpu::ShaderSource::Wgsl(shader_source.into()),
+            });
+
+        let pipeline_layout =
+            self.ctx
+                .device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: self.label,
+                    bind_group_layouts: &self.bind_group_layouts,
+                    immediate_size: 0,
+                });
+
+        Ok(self
+            .ctx
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: self.label,
+                layout: Some(&pipeline_layout),
+                module: &shader_module,
+                entry_point: Some(self.entry_point),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                cache: None,
+            }))
+    }
+}
+
 impl Vertex {
     /// Get the vertex buffer layout for this vertex type.
     pub const fn layout() -> wgpu::VertexBufferLayout<'static> {

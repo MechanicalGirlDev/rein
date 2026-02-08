@@ -11,8 +11,8 @@ pub use frame_io::{FrameInput, FrameOutput, Viewport};
 pub use settings::WindowSettings;
 
 use crate::context::WgpuContext;
-use crate::core::RenderTarget;
 use crate::core::texture::DepthTexture;
+use crate::core::RenderTarget;
 use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::WindowEvent;
@@ -117,16 +117,14 @@ where
         }))
         .expect("Failed to find suitable GPU adapter");
 
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("rein device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::default(),
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: Default::default(),
-                experimental_features: Default::default(),
-            },
-        ))
+        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+            label: Some("rein device"),
+            required_features: wgpu::Features::empty(),
+            required_limits: wgpu::Limits::default(),
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: Default::default(),
+            experimental_features: Default::default(),
+        }))
         .expect("Failed to create device");
 
         let ctx = WgpuContext::new(device, queue);

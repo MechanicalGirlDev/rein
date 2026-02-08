@@ -4,41 +4,70 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Rein is a three-d style 3D rendering library built on wgpu for cross-platform GPU rendering. Primary use case is robotics visualization with URDF support.
+Rein is a 3D engine built on wgpu with ECS (hecs), physics simulation, and GPU compute. Primary use case is robotics visualization with URDF support.
 
 ## Build Commands
 
 ```bash
-cargo build                      # Debug build (includes window feature)
-cargo build --release            # Release build
-cargo build --all-features       # All features (window + gui)
-cargo build --no-default-features # Minimal build (no window)
+cargo build                        # Debug build (includes window feature)
+cargo build --release              # Release build
+cargo build --all-features         # All features
+cargo build --no-default-features  # Minimal build (no window)
+cargo build --features ecs         # ECS only
+cargo build --features engine      # Engine (ECS + window)
+cargo build --features full        # Everything
 
-cargo test --lib                 # Run library tests
-cargo test test_name             # Run specific test
-cargo test -- --nocapture        # Show test output
+cargo test --lib                   # Run library tests
+cargo test --all-features          # All tests
+cargo test test_name               # Run specific test
 
-cargo check --all-features       # Type checking
-cargo clippy --all-features      # Linting
-cargo fmt                        # Format code
+cargo check --all-features         # Type checking
+cargo clippy --all-features        # Linting
+cargo fmt                          # Format code
 ```
 
 ## Architecture
 
-Six-layer design from low to high level:
+Ten-layer design from low to high level:
 
 1. **context/** - wgpu wrapper (`WgpuContext` with Arc-wrapped Device/Queue)
 2. **core/** - GPU primitives (buffers, textures, pipelines, vertex types)
-3. **renderer/** - High-level rendering (cameras, materials, geometry, lights, shadows, culling)
-4. **window/** - winit abstraction (optional, feature="window")
-5. **gui/** - Text rendering with glyphon (optional, feature="gui")
-6. **urdf/** - URDF robot model loading
+3. **compute/** - Compute shader dispatch, GPU-CPU readback
+4. **renderer/** - High-level rendering (cameras, materials, geometry, lights, shadows, culling)
+5. **physics/** - Rigid body simulation, collision detection (feature="physics")
+6. **ecs/** - hecs ECS integration, components, systems (feature="ecs")
+7. **engine/** - Game loop with App trait, fixed/variable timestep (feature="engine")
+8. **window/** - winit abstraction (feature="window")
+9. **gui/** - Text rendering with glyphon (feature="gui")
+10. **urdf/** - URDF robot model loading
 
 Shaders are in `src/shaders/` as WGSL files, compiled at runtime.
+
+## Feature Flags
+
+```toml
+default = ["window"]
+compute = []
+ecs = ["dep:hecs"]
+physics = ["ecs"]
+gpu-physics = ["physics"]
+engine = ["ecs", "window"]
+full = ["engine", "physics", "gpu-physics", "gui"]
+```
 
 ## Key Patterns
 
 **Generic container pattern**: `Gm<G: Geometry, M: Material>` combines any geometry with any material.
+
+**ECS game loop pattern** (feature="engine"):
+```rust
+struct MyApp;
+impl App for MyApp {
+    fn init(&mut self, ctx: &WgpuContext, world: &mut hecs::World) { /* setup */ }
+    fn update(&mut self, world: &mut hecs::World, ctx: &SystemContext) { /* per-frame */ }
+}
+run_app(WindowSettings::default(), GameLoopConfig::default(), MyApp)?;
+```
 
 **Uniform binding groups**:
 - Group 0: Camera uniform
@@ -51,11 +80,11 @@ Shaders are in `src/shaders/` as WGSL files, compiled at runtime.
 - `VertexPN` - position + normal (lighting)
 - `VertexPNUC` - full (position, normal, UV, color)
 
-**Render loop pattern**:
+**Render loop pattern** (without engine):
 ```rust
-window.render_loop(state_init, |frame_input, state| {
+window.render_loop(state, |state, frame| {
     // Update and render
-    FrameOutput { clear_color, effects, .. }
+    FrameOutput::default()
 })
 ```
 
@@ -75,7 +104,7 @@ window.render_loop(state_init, |frame_input, state| {
 
 - `wgpu` 28 - GPU backend
 - `glam` 0.31 - Math (Vec3, Mat4, etc.)
-- `nalgebra` 0.34 - Advanced linear algebra (used in URDF kinematics)
+- `hecs` 0.10 - ECS (optional)
 - `urdf-rs` 0.9 - URDF parsing
 - `winit` 0.30 - Window management (optional)
 - `glyphon` 0.10 - Text rendering (optional)

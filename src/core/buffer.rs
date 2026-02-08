@@ -226,3 +226,116 @@ impl RawUniformBuffer {
         self.size
     }
 }
+
+/// GPU storage buffer for compute shader read/write operations.
+///
+/// Used for compute shader read/write data. The buffer is created with
+/// `STORAGE | COPY_DST | COPY_SRC` usage flags.
+///
+/// Unlike `UniformBuffer`, `StorageBuffer` does not manage its own bind group.
+/// Bind group layout and bind group creation is left to the caller,
+/// following the same pattern as `RawUniformBuffer`.
+pub struct StorageBuffer {
+    buffer: wgpu::Buffer,
+    size: u64,
+}
+
+impl StorageBuffer {
+    /// Create a new storage buffer with specified size.
+    pub fn new(ctx: &WgpuContext, size: u64, label: Option<&str>) -> Self {
+        let buffer = ctx.device.create_buffer(&wgpu::BufferDescriptor {
+            label,
+            size,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_DST
+                | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        Self { buffer, size }
+    }
+
+    /// Create a storage buffer initialized with typed data.
+    pub fn from_data<T: Pod>(ctx: &WgpuContext, data: &[T], label: Option<&str>) -> Self {
+        use wgpu::util::DeviceExt;
+        let contents = bytemuck::cast_slice(data);
+        let buffer = ctx
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label,
+                contents,
+                usage: wgpu::BufferUsages::STORAGE
+                    | wgpu::BufferUsages::COPY_DST
+                    | wgpu::BufferUsages::COPY_SRC,
+            });
+
+        Self {
+            size: contents.len() as u64,
+            buffer,
+        }
+    }
+
+    /// Write typed data to the buffer.
+    pub fn write<T: Pod>(&self, ctx: &WgpuContext, data: &[T]) {
+        ctx.queue
+            .write_buffer(&self.buffer, 0, bytemuck::cast_slice(data));
+    }
+
+    /// Get the buffer size in bytes.
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+
+    /// Get the raw wgpu buffer.
+    pub fn buffer(&self) -> &wgpu::Buffer {
+        &self.buffer
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::WgpuContext;
+
+    /// Try to create a GPU context for testing. Returns None if no GPU is
+    /// available or if the `REIN_SKIP_GPU_TESTS` environment variable is set.
+    fn try_create_ctx() -> Option<WgpuContext> {
+        if std::env::var("REIN_SKIP_GPU_TESTS").is_ok() {
+            return None;
+        }
+        WgpuContext::new_blocking(None).ok()
+    }
+
+    #[test]
+    fn test_storage_buffer_new() {
+        let Some(ctx) = try_create_ctx() else {
+            eprintln!("Skipping: no GPU device available (set REIN_SKIP_GPU_TESTS to skip)");
+            return;
+        };
+        let buf = StorageBuffer::new(&ctx, 256, Some("test"));
+        assert_eq!(buf.size(), 256);
+    }
+
+    #[test]
+    fn test_storage_buffer_from_data() {
+        let Some(ctx) = try_create_ctx() else {
+            eprintln!("Skipping: no GPU device available");
+            return;
+        };
+        let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0];
+        let buf = StorageBuffer::from_data(&ctx, &data, Some("test"));
+        assert_eq!(buf.size(), (4 * std::mem::size_of::<f32>()) as u64);
+    }
+
+    #[test]
+    fn test_storage_buffer_write() {
+        let Some(ctx) = try_create_ctx() else {
+            eprintln!("Skipping: no GPU device available");
+            return;
+        };
+        let buf = StorageBuffer::new(&ctx, 64, Some("test"));
+        let data: Vec<u32> = vec![10, 20, 30, 40];
+        buf.write(&ctx, &data);
+        assert_eq!(buf.size(), 64);
+    }
+}

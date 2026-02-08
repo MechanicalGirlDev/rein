@@ -6,9 +6,9 @@ use crate::core::buffer::RawUniformBuffer;
 use crate::core::pipeline::PipelineBuilder;
 use crate::core::render_states::{CullState, DepthState};
 use crate::core::vertex::VertexP;
-use crate::renderer::Camera;
 use crate::renderer::geometry::Geometry;
 use crate::renderer::light::DirectionalLight;
+use crate::renderer::Camera;
 use glam::{Mat4, Vec3};
 
 /// Shadow uniform for depth pass.

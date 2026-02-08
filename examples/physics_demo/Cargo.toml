@@ -1,0 +1,10 @@
+[package]
+name = "physics_demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rein = { path = "../..", features = ["engine", "physics"] }
+glam = "0.31"
+anyhow = "1"
+hecs = "0.10"

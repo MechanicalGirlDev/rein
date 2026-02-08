@@ -12,6 +12,8 @@ use crate::urdf::loader::{GeometryType, JointInfo, UrdfLoader};
 use glam::{Mat4, Quat, Vec3};
 use std::collections::HashMap;
 use std::path::Path;
+#[cfg(feature = "ecs")]
+use std::sync::Arc;
 
 /// A link in the robot model with its mesh and material.
 struct RobotLink {
@@ -348,6 +350,78 @@ impl RobotModel {
                 render_pass.draw(0..link.mesh.draw_count(), 0..1);
             }
         }
+    }
+
+    /// Spawn the robot as ECS entities with parent-child hierarchy.
+    ///
+    /// Consumes the `RobotModel` and moves each link's mesh into the ECS world.
+    /// Each link becomes an entity with Transform, GlobalTransform, and MeshRenderer.
+    /// The hierarchy follows the URDF joint tree.
+    /// Returns the root entity.
+    #[cfg(feature = "ecs")]
+    pub fn spawn_into_world(
+        self,
+        world: &mut hecs::World,
+        _format: wgpu::TextureFormat,
+    ) -> anyhow::Result<hecs::Entity> {
+        use crate::ecs::components::rendering::{
+            FrustumCullable, MaterialHandle, MeshHandle, MeshRenderer, Visible,
+        };
+        use crate::ecs::components::transform::{Children, GlobalTransform, Parent, Transform};
+
+        let material_arc: Arc<dyn crate::ecs::bridge::MaterialResource> = Arc::new(self.material);
+
+        let mut link_entities: HashMap<String, hecs::Entity> = HashMap::new();
+
+        for link in self.links {
+            let transform = Transform::from_matrix(link.local_transform);
+            let global = GlobalTransform(link.world_transform);
+
+            let renderer = MeshRenderer {
+                mesh: MeshHandle(Arc::new(link.mesh)),
+                material: MaterialHandle(material_arc.clone()),
+                visible: true,
+                cast_shadow: true,
+                receive_shadow: true,
+            };
+
+            let entity = world.spawn((transform, global, renderer, FrustumCullable, Visible));
+            link_entities.insert(link.name, entity);
+        }
+
+        // Build parent-child relationships from joints
+        let mut children_map: HashMap<hecs::Entity, Vec<hecs::Entity>> = HashMap::new();
+
+        for joint in &self.joints {
+            if let (Some(&parent_entity), Some(&child_entity)) = (
+                link_entities.get(&joint.parent_link),
+                link_entities.get(&joint.child_link),
+            ) {
+                world.insert_one(child_entity, Parent(parent_entity)).ok();
+                children_map
+                    .entry(parent_entity)
+                    .or_default()
+                    .push(child_entity);
+            }
+        }
+
+        for (parent_entity, children) in children_map {
+            world.insert_one(parent_entity, Children(children)).ok();
+        }
+
+        // Find root: base_link or first link without a Parent
+        let root = link_entities
+            .get("base_link")
+            .copied()
+            .or_else(|| {
+                link_entities
+                    .values()
+                    .find(|&&entity| world.get::<&Parent>(entity).is_err())
+                    .copied()
+            })
+            .unwrap_or_else(|| world.spawn((Transform::identity(), GlobalTransform::default())));
+
+        Ok(root)
     }
 
     /// Get the bounding box of the robot.

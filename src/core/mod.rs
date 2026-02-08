@@ -10,9 +10,9 @@ pub mod render_target;
 pub mod texture;
 pub mod vertex;
 
-pub use buffer::{IndexBuffer, RawUniformBuffer, UniformBuffer, VertexBuffer};
+pub use buffer::{IndexBuffer, RawUniformBuffer, StorageBuffer, UniformBuffer, VertexBuffer};
 pub use instance::{InstanceBuffer, InstanceData};
-pub use pipeline::PipelineBuilder;
+pub use pipeline::{ComputePipelineBuilder, PipelineBuilder};
 pub use render_states::{BlendState, ClearState, CullState, DepthState};
 pub use render_target::RenderTarget;
 pub use texture::{DepthTexture, Texture2D, Texture2DArray, TextureCubeMap};
