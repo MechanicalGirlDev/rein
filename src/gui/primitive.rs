@@ -81,7 +81,7 @@ impl PrimitiveRenderer {
             .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("GUI Pipeline Layout"),
                 bind_group_layouts: &[&bind_group_layout],
-                push_constant_ranges: &[],
+                immediate_size: 0,
             });
 
         let pipeline = ctx
@@ -141,6 +141,7 @@ impl PrimitiveRenderer {
                 },
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
                 cache: None,
             });
 
