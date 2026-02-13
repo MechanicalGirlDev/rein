@@ -22,7 +22,7 @@ jobs:
 
       - name: Verify tag matches Cargo.toml version
         run: |
-          CARGO_VERSION="v$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')"
+          CARGO_VERSION="v$(grep '^version' rein-engine/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')"
           TAG_VERSION="${GITHUB_REF_NAME}"
           if [ "$CARGO_VERSION" != "$TAG_VERSION" ]; then
             echo "::error::Tag ${TAG_VERSION} does not match Cargo.toml version ${CARGO_VERSION}"
@@ -30,7 +30,7 @@ jobs:
           fi
 
       - name: Publish to crates.io
-        run: cargo publish
+        run: cargo publish -p rein-engine
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
