@@ -19,7 +19,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-rein = { git = "https://github.com/MechanicalGirlDev/rein" }
+rein-engine = { git = "https://github.com/MechanicalGirlDev/rein" }
 ```
 
 ### Feature Flags
@@ -43,10 +43,10 @@ The library is organized into layers:
 ## Example
 
 ```rust
-use rein::{Window, WindowSettings, FrameOutput};
-use rein::renderer::{Camera, OrbitControl};
-use rein::urdf::RobotModel;
-use rein::core::ClearState;
+use rein_engine::{Window, WindowSettings, FrameOutput};
+use rein_engine::renderer::{Camera, OrbitControl};
+use rein_engine::urdf::RobotModel;
+use rein_engine::core::ClearState;
 use glam::Vec3;
 
 fn main() -> anyhow::Result<()> {

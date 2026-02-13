@@ -6,7 +6,7 @@ use rein_engine::ecs::components::rendering::{
     Visible,
 };
 use rein_engine::ecs::components::transform::{GlobalTransform, Transform};
-use rein_engine::engine::{App, GameLoopConfig, SystemContext, run_app};
+use rein_engine::engine::{run_app, App, GameLoopConfig, SystemContext};
 use rein_engine::renderer::light::LightType;
 use rein_engine::{Camera, ColorMaterial, Mesh, WgpuContext, WindowSettings};
 
@@ -50,8 +50,8 @@ impl App for EditorApp {
     fn update(&mut self, world: &mut hecs::World, ctx: &SystemContext) {
         // Spawn mesh on first update (surface_format is available here)
         if !self.mesh_spawned {
-            let material = ColorMaterial::new(ctx.ctx, ctx.surface_format)
-                .expect("Failed to create material");
+            let material =
+                ColorMaterial::new(ctx.ctx, ctx.surface_format).expect("Failed to create material");
             let mesh = Mesh::cube(ctx.ctx, 1.0, [0.8, 0.3, 0.2]);
 
             world.spawn((

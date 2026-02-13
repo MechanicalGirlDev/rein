@@ -51,6 +51,7 @@ pub fn setup_sphere_world(n: usize) -> hecs::World {
 }
 
 /// Mixed scene: half dynamic spheres, half static boxes.
+#[allow(clippy::manual_is_multiple_of)]
 pub fn setup_mixed_world(n: usize) -> hecs::World {
     let mut world = hecs::World::new();
     let cols = (n as f32).sqrt().ceil() as usize;
@@ -114,6 +115,7 @@ pub fn setup_sparse_world(n: usize) -> hecs::World {
 }
 
 /// Ground plane + `n` dynamic bodies above it (mixed spheres/boxes).
+#[allow(clippy::manual_is_multiple_of)]
 pub fn setup_scene(n: usize) -> (hecs::World, PhysicsWorld) {
     let mut world = hecs::World::new();
     let physics = PhysicsWorld::new(PhysicsConfig::default());
@@ -242,6 +244,7 @@ const SPAWN_RADIUS: f32 = 8.0;
 const SPAWN_HEIGHT: f32 = 15.0;
 
 /// Spawn a single physics object at a deterministic position.
+#[allow(clippy::manual_is_multiple_of)]
 fn spawn_object(world: &mut hecs::World, index: usize) {
     let is_sphere = index % 2 == 0;
     let angle = (index * 137) as f32 * 0.01;
@@ -332,10 +335,7 @@ pub fn create_headless_context() -> anyhow::Result<WgpuContext> {
 }
 
 /// Setup a GPU-enabled physics scene: ground + `n` bodies + GPU physics init.
-pub fn setup_gpu_scene(
-    ctx: &WgpuContext,
-    n: usize,
-) -> anyhow::Result<(hecs::World, PhysicsWorld)> {
+pub fn setup_gpu_scene(ctx: &WgpuContext, n: usize) -> anyhow::Result<(hecs::World, PhysicsWorld)> {
     let (world, mut physics) = setup_scene(n);
     physics.init_gpu(ctx, n.max(256))?;
     Ok((world, physics))

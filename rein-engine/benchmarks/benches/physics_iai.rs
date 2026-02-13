@@ -272,24 +272,24 @@ library_benchmark_group!(
 #[library_benchmark]
 fn gpu_pipeline_step_500() {
     let ctx = rein_bench::create_headless_context().expect("GPU context");
-    let (mut world, mut physics) = rein_bench::setup_gpu_scene(&ctx, black_box(500))
-        .expect("GPU scene setup");
+    let (mut world, mut physics) =
+        rein_bench::setup_gpu_scene(&ctx, black_box(500)).expect("GPU scene setup");
     black_box(physics.step_gpu(&mut world, 1.0 / 60.0, &ctx));
 }
 
 #[library_benchmark]
 fn gpu_pipeline_step_1000() {
     let ctx = rein_bench::create_headless_context().expect("GPU context");
-    let (mut world, mut physics) = rein_bench::setup_gpu_scene(&ctx, black_box(1000))
-        .expect("GPU scene setup");
+    let (mut world, mut physics) =
+        rein_bench::setup_gpu_scene(&ctx, black_box(1000)).expect("GPU scene setup");
     black_box(physics.step_gpu(&mut world, 1.0 / 60.0, &ctx));
 }
 
 #[library_benchmark]
 fn gpu_mass_physics_60frames() {
     let ctx = rein_bench::create_headless_context().expect("GPU context");
-    let (mut world, mut physics) = rein_bench::setup_gpu_mass_scene(&ctx, black_box(0))
-        .expect("GPU mass scene");
+    let (mut world, mut physics) =
+        rein_bench::setup_gpu_mass_scene(&ctx, black_box(0)).expect("GPU mass scene");
     rein_bench::run_gpu_mass_physics(&mut world, &mut physics, &ctx, 60, 3, 0);
     black_box(&world);
 }
@@ -307,12 +307,11 @@ library_benchmark_group!(
 // ---------------------------------------------------------------------------
 
 main!(
-    library_benchmark_groups =
-        broadphase_group,
-        narrowphase_group,
-        solver_group,
-        pipeline_group,
-        mass_physics_group,
-        sleep_group,
-        gpu_group
+    library_benchmark_groups = broadphase_group,
+    narrowphase_group,
+    solver_group,
+    pipeline_group,
+    mass_physics_group,
+    sleep_group,
+    gpu_group
 );
