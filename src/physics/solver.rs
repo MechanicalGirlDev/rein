@@ -3,6 +3,7 @@
 use glam::Vec3;
 
 use crate::ecs::components::physics::{RigidBody, RigidBodyType};
+use crate::ecs::components::transform::GlobalTransform;
 
 use super::contact::ContactManifold;
 
@@ -25,13 +26,23 @@ pub fn solve_contacts(
 }
 
 fn solve_manifold(manifold: &mut ContactManifold, world: &mut hecs::World) {
-    // Read rigid body data for both entities
+    // Read rigid body data and positions for both entities
     let (rb_a_data, rb_b_data) = {
         let rb_a = world.get::<&RigidBody>(manifold.entity_a).ok();
         let rb_b = world.get::<&RigidBody>(manifold.entity_b).ok();
+        let pos_a = world
+            .get::<&GlobalTransform>(manifold.entity_a)
+            .ok()
+            .map(|t| t.0.transform_point3(Vec3::ZERO))
+            .unwrap_or(Vec3::ZERO);
+        let pos_b = world
+            .get::<&GlobalTransform>(manifold.entity_b)
+            .ok()
+            .map(|t| t.0.transform_point3(Vec3::ZERO))
+            .unwrap_or(Vec3::ZERO);
 
-        let a = rb_a.map(|rb| RbData::from_rb(&rb));
-        let b = rb_b.map(|rb| RbData::from_rb(&rb));
+        let a = rb_a.map(|rb| RbData::from_rb(&rb, pos_a));
+        let b = rb_b.map(|rb| RbData::from_rb(&rb, pos_b));
         (a, b)
     };
 
@@ -103,14 +114,24 @@ fn solve_manifold(manifold: &mut ContactManifold, world: &mut hecs::World) {
         // Friction impulse
         // Re-read velocities after normal impulse
         let (rb_a_updated, rb_b_updated) = {
+            let pos_a = world
+                .get::<&GlobalTransform>(manifold.entity_a)
+                .ok()
+                .map(|t| t.0.transform_point3(Vec3::ZERO))
+                .unwrap_or(Vec3::ZERO);
+            let pos_b = world
+                .get::<&GlobalTransform>(manifold.entity_b)
+                .ok()
+                .map(|t| t.0.transform_point3(Vec3::ZERO))
+                .unwrap_or(Vec3::ZERO);
             let a = world
                 .get::<&RigidBody>(manifold.entity_a)
                 .ok()
-                .map(|rb| RbData::from_rb(&rb));
+                .map(|rb| RbData::from_rb(&rb, pos_a));
             let b = world
                 .get::<&RigidBody>(manifold.entity_b)
                 .ok()
-                .map(|rb| RbData::from_rb(&rb));
+                .map(|rb| RbData::from_rb(&rb, pos_b));
             (a, b)
         };
 
@@ -168,7 +189,7 @@ struct RbData {
 }
 
 impl RbData {
-    fn from_rb(rb: &RigidBody) -> Self {
+    fn from_rb(rb: &RigidBody, position: Vec3) -> Self {
         let inv_mass = if rb.body_type == RigidBodyType::Dynamic && rb.mass > 0.0 {
             1.0 / rb.mass
         } else {
@@ -202,7 +223,7 @@ impl RbData {
             inv_inertia,
             linear_velocity: rb.linear_velocity,
             angular_velocity: rb.angular_velocity,
-            position: Vec3::ZERO, // Will be set from transform
+            position,
             restitution: rb.restitution,
             friction: rb.friction,
         }

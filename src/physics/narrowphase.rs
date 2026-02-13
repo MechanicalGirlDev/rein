@@ -506,7 +506,27 @@ pub fn sat_box_box(
         best_axis = -best_axis;
     }
 
-    let point = center_a + best_axis * (half_a.dot(best_axis.abs()) - min_overlap * 0.5);
+    // Compute projections of both boxes onto the best axis
+    let proj_a_on_axis = half_a_arr[0] * axes_a[0].dot(best_axis).abs()
+        + half_a_arr[1] * axes_a[1].dot(best_axis).abs()
+        + half_a_arr[2] * axes_a[2].dot(best_axis).abs();
+    let proj_b_on_axis = half_b_arr[0] * axes_b[0].dot(best_axis).abs()
+        + half_b_arr[1] * axes_b[1].dot(best_axis).abs()
+        + half_b_arr[2] * axes_b[2].dot(best_axis).abs();
+
+    // Contact depth along the axis: midpoint between the two closest faces
+    let face_a = center_a.dot(best_axis) + proj_a_on_axis;
+    let face_b = center_b.dot(best_axis) - proj_b_on_axis;
+    let contact_d = (face_a + face_b) * 0.5;
+
+    // Use the smaller body's center for lateral (non-axis) position,
+    // then project onto the contact plane along the axis
+    let ref_center = if proj_a_on_axis > proj_b_on_axis {
+        center_b
+    } else {
+        center_a
+    };
+    let point = ref_center + best_axis * (contact_d - ref_center.dot(best_axis));
 
     Some(ContactInfo {
         normal: best_axis,
@@ -543,6 +563,100 @@ fn sat_test_axis(
     }
 }
 
+/// Specialized box-sphere intersection test.
+pub fn box_sphere(
+    half_extents: Vec3,
+    box_transform: &GlobalTransform,
+    radius: f32,
+    sphere_transform: &GlobalTransform,
+) -> Option<ContactInfo> {
+    let sphere_center = sphere_transform.0.transform_point3(Vec3::ZERO);
+    let box_center = box_transform.0.transform_point3(Vec3::ZERO);
+
+    // Account for sphere scale
+    let sphere_scale = sphere_transform.0.x_axis.truncate().length();
+    let world_radius = radius * sphere_scale;
+
+    // Box local axes (normalized)
+    let box_axes = [
+        box_transform.0.x_axis.truncate().normalize_or_zero(),
+        box_transform.0.y_axis.truncate().normalize_or_zero(),
+        box_transform.0.z_axis.truncate().normalize_or_zero(),
+    ];
+
+    // Account for box scale
+    let box_scale = Vec3::new(
+        box_transform.0.x_axis.truncate().length(),
+        box_transform.0.y_axis.truncate().length(),
+        box_transform.0.z_axis.truncate().length(),
+    );
+    let scaled_half = half_extents * box_scale;
+
+    // Project sphere center into box's local space
+    let diff = sphere_center - box_center;
+    let local = Vec3::new(
+        diff.dot(box_axes[0]),
+        diff.dot(box_axes[1]),
+        diff.dot(box_axes[2]),
+    );
+
+    // Clamp to box extents to find closest point on box
+    let clamped = Vec3::new(
+        local.x.clamp(-scaled_half.x, scaled_half.x),
+        local.y.clamp(-scaled_half.y, scaled_half.y),
+        local.z.clamp(-scaled_half.z, scaled_half.z),
+    );
+
+    // Convert closest point back to world space
+    let closest_world =
+        box_center + box_axes[0] * clamped.x + box_axes[1] * clamped.y + box_axes[2] * clamped.z;
+
+    let to_sphere = sphere_center - closest_world;
+    let dist_sq = to_sphere.length_squared();
+
+    if dist_sq >= world_radius * world_radius {
+        return None;
+    }
+
+    let dist = dist_sq.sqrt();
+
+    // Handle case where sphere center is inside the box
+    if dist < 1e-6 {
+        // Find the axis with smallest penetration
+        let mut min_pen = f32::MAX;
+        let mut normal = Vec3::Y;
+        for i in 0..3 {
+            let pen_pos = scaled_half[i] - local[i];
+            let pen_neg = scaled_half[i] + local[i];
+            if pen_pos < min_pen {
+                min_pen = pen_pos;
+                normal = box_axes[i];
+            }
+            if pen_neg < min_pen {
+                min_pen = pen_neg;
+                normal = -box_axes[i];
+            }
+        }
+        let penetration = min_pen + world_radius;
+        let point = sphere_center - normal * world_radius;
+        return Some(ContactInfo {
+            normal,
+            penetration,
+            point,
+        });
+    }
+
+    let normal = to_sphere / dist;
+    let penetration = world_radius - dist;
+    let point = closest_world;
+
+    Some(ContactInfo {
+        normal,
+        penetration,
+        point,
+    })
+}
+
 /// Detect collision between two shapes, dispatching to specialized tests where possible.
 pub fn detect_collision(
     shape_a: &ColliderShape,
@@ -563,6 +677,23 @@ pub fn detect_collision(
                 half_extents: half_b,
             },
         ) => sat_box_box(*half_a, transform_a.0, *half_b, transform_b.0),
+        (
+            ColliderShape::Box {
+                half_extents: half,
+            },
+            ColliderShape::Sphere { radius },
+        ) => box_sphere(*half, transform_a, *radius, transform_b),
+        (
+            ColliderShape::Sphere { radius },
+            ColliderShape::Box {
+                half_extents: half,
+            },
+        ) => {
+            // Swap and flip normal
+            let mut info = box_sphere(*half, transform_b, *radius, transform_a)?;
+            info.normal = -info.normal;
+            Some(info)
+        }
         _ => {
             // General GJK + EPA
             let simplex = gjk_intersection(shape_a, transform_a, shape_b, transform_b)?;

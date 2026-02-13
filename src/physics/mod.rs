@@ -115,6 +115,117 @@ impl PhysicsWorld {
         }
     }
 
+    /// Step the physics simulation with GPU-accelerated broadphase.
+    ///
+    /// Uses GPU compute for AABB broadphase when body count exceeds the threshold,
+    /// falling back to CPU otherwise. Requires `gpu-physics` feature and prior
+    /// call to [`init_gpu`].
+    #[cfg(feature = "gpu-physics")]
+    pub fn step_gpu(
+        &mut self,
+        world: &mut hecs::World,
+        delta_time: f64,
+        ctx: &crate::context::WgpuContext,
+    ) {
+        self.accumulator += delta_time;
+
+        let mut substeps = 0u32;
+        while self.accumulator >= self.config.fixed_timestep && substeps < self.config.max_substeps
+        {
+            self.fixed_step_gpu(world, self.config.fixed_timestep as f32, ctx);
+            self.accumulator -= self.config.fixed_timestep;
+            substeps += 1;
+        }
+
+        if self.accumulator > self.config.fixed_timestep * self.config.max_substeps as f64 {
+            self.accumulator = 0.0;
+        }
+    }
+
+    #[cfg(feature = "gpu-physics")]
+    fn fixed_step_gpu(
+        &mut self,
+        world: &mut hecs::World,
+        dt: f32,
+        ctx: &crate::context::WgpuContext,
+    ) {
+        rigid_body::apply_gravity(world, self.config.gravity);
+        rigid_body::integrate_velocities(world, dt);
+
+        // Sync transforms so GPU broadphase sees current positions
+        rigid_body::sync_transforms(world);
+
+        // GPU broadphase when available and body count is high enough
+        let pairs = if let Some(gpu) = &self.gpu_physics {
+            let (body_count, entity_map) = gpu.upload_aabbs(ctx, world);
+            if gpu::GpuPhysics::should_use_gpu(body_count as usize) {
+                gpu.dispatch_broadphase(ctx, body_count);
+                let gpu_pairs = gpu.readback_pairs(ctx);
+                gpu_pairs
+                    .iter()
+                    .filter_map(|p| {
+                        let a = entity_map.get(p.entity_a as usize)?;
+                        let b = entity_map.get(p.entity_b as usize)?;
+                        Some((*a, *b))
+                    })
+                    .collect()
+            } else {
+                self.broadphase.find_pairs(world)
+            }
+        } else {
+            self.broadphase.find_pairs(world)
+        };
+
+        // Narrowphase (CPU)
+        self.contacts.clear();
+        for (entity_a, entity_b) in &pairs {
+            let contact = {
+                let collider_a = world.get::<&Collider>(*entity_a);
+                let collider_b = world.get::<&Collider>(*entity_b);
+                let transform_a = world.get::<&GlobalTransform>(*entity_a);
+                let transform_b = world.get::<&GlobalTransform>(*entity_b);
+
+                if let (Ok(ca), Ok(cb), Ok(ta), Ok(tb)) =
+                    (collider_a, collider_b, transform_a, transform_b)
+                {
+                    let adjusted_a = if ca.offset != Vec3::ZERO {
+                        GlobalTransform(ta.0 * glam::Mat4::from_translation(ca.offset))
+                    } else {
+                        *ta
+                    };
+                    let adjusted_b = if cb.offset != Vec3::ZERO {
+                        GlobalTransform(tb.0 * glam::Mat4::from_translation(cb.offset))
+                    } else {
+                        *tb
+                    };
+
+                    detect_collision(&ca.shape, &adjusted_a, &cb.shape, &adjusted_b)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(info) = contact {
+                self.contacts.push(ContactManifold {
+                    entity_a: *entity_a,
+                    entity_b: *entity_b,
+                    normal: info.normal,
+                    contacts: vec![ContactPoint {
+                        position: info.point,
+                        penetration: info.penetration,
+                        normal_impulse: 0.0,
+                        tangent_impulse: [0.0; 2],
+                    }],
+                });
+            }
+        }
+
+        solver::solve_contacts(&mut self.contacts, world, self.config.solver_iterations);
+        rigid_body::integrate_positions(world, dt);
+        rigid_body::sync_transforms(world);
+        rigid_body::clear_forces(world);
+    }
+
     fn fixed_step(&mut self, world: &mut hecs::World, dt: f32) {
         // 1. Apply forces (gravity)
         rigid_body::apply_gravity(world, self.config.gravity);
