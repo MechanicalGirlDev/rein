@@ -6,6 +6,22 @@
 use crate::window::frame_io::Viewport;
 use glam::{Mat4, Vec3};
 
+/// Viewport information.
+#[derive(Debug, Clone, Copy)]
+pub struct Viewport {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Viewport {
+    /// Get the aspect ratio.
+    pub fn aspect(&self) -> f32 {
+        self.width as f32 / self.height as f32
+    }
+}
+
 /// Projection mode for a camera.
 #[derive(Debug, Clone, Copy)]
 pub enum Projection {

@@ -61,6 +61,9 @@ pub use renderer::{
     Projection, ShadowConfig, ShadowMap, ShadowUniform, SpotLight, UnlitMaterial,
 };
 
+#[cfg(feature = "window")]
+pub use renderer::{FirstPersonControl, FlyControl, OrbitControl};
+
 pub use urdf::{RobotModel, UrdfLoader};
 
 pub use effect::{CopyEffect, Effect, EffectChain, FogEffect, FogMode, FullscreenQuad, FxaaEffect};
