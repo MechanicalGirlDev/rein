@@ -15,7 +15,7 @@ const SLEEP_TIME: f32 = 1.0;
 /// Apply gravity force to all dynamic rigid bodies.
 pub fn apply_gravity(world: &mut hecs::World, gravity: Vec3) {
     for (_, (rb, sleep)) in world.query_mut::<(&mut RigidBody, Option<&SleepInfo>)>() {
-        let is_sleeping = sleep.map_or(false, |s| s.state == SleepState::Sleeping);
+        let is_sleeping = sleep.is_some_and(|s| s.state == SleepState::Sleeping);
         if rb.body_type == RigidBodyType::Dynamic && rb.mass > 0.0 && !is_sleeping {
             rb.force_accumulator += gravity * rb.mass * rb.gravity_scale;
         }
@@ -25,7 +25,7 @@ pub fn apply_gravity(world: &mut hecs::World, gravity: Vec3) {
 /// Integrate velocities using semi-implicit Euler: v += (F/m) * dt.
 pub fn integrate_velocities(world: &mut hecs::World, dt: f32) {
     for (_, (rb, sleep)) in world.query_mut::<(&mut RigidBody, Option<&SleepInfo>)>() {
-        let is_sleeping = sleep.map_or(false, |s| s.state == SleepState::Sleeping);
+        let is_sleeping = sleep.is_some_and(|s| s.state == SleepState::Sleeping);
         if rb.body_type != RigidBodyType::Dynamic || rb.mass <= 0.0 || is_sleeping {
             continue;
         }
@@ -67,7 +67,7 @@ pub fn integrate_positions(world: &mut hecs::World, dt: f32) {
     for (_, (rb, transform, sleep)) in
         world.query_mut::<(&RigidBody, &mut Transform, Option<&SleepInfo>)>()
     {
-        let is_sleeping = sleep.map_or(false, |s| s.state == SleepState::Sleeping);
+        let is_sleeping = sleep.is_some_and(|s| s.state == SleepState::Sleeping);
         if rb.body_type != RigidBodyType::Dynamic || is_sleeping {
             continue;
         }
