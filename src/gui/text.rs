@@ -8,6 +8,13 @@ use glyphon::{
     TextArea, TextAtlas, TextBounds, TextRenderer as GlyphonTextRenderer,
 };
 
+struct TextEntry {
+    buffer: Buffer,
+    left: f32,
+    top: f32,
+    color: Color,
+}
+
 /// Text renderer using glyphon.
 pub struct TextRenderer {
     font_system: FontSystem,
@@ -16,7 +23,12 @@ pub struct TextRenderer {
     cache: Cache,
     atlas: TextAtlas,
     renderer: GlyphonTextRenderer,
-    buffer: Buffer,
+
+    // Immediate mode text entries
+    entries: Vec<TextEntry>,
+    available_buffers: Vec<Buffer>,
+    scratch_buffer: Buffer,
+
     viewport: glyphon::Viewport,
 }
 
@@ -36,8 +48,7 @@ impl TextRenderer {
             None,
         );
 
-        let buffer = Buffer::new(&mut font_system, Metrics::new(14.0, 18.0));
-
+        let scratch_buffer = Buffer::new(&mut font_system, Metrics::new(14.0, 18.0));
         let viewport = glyphon::Viewport::new(&ctx.device, &cache);
 
         Self {
@@ -46,7 +57,9 @@ impl TextRenderer {
             cache,
             atlas,
             renderer,
-            buffer,
+            entries: Vec::new(),
+            available_buffers: Vec::new(),
+            scratch_buffer,
             viewport,
         }
     }
@@ -57,24 +70,77 @@ impl TextRenderer {
             .update(&ctx.queue, Resolution { width, height });
     }
 
-    /// Set the text content.
-    pub fn set_text(&mut self, text: &str, font_size: f32, line_height: f32) {
-        self.buffer
-            .set_metrics(&mut self.font_system, Metrics::new(font_size, line_height));
-        self.buffer.set_text(
+    /// Begin a new frame for immediate mode text rendering.
+    pub fn begin_frame(&mut self) {
+        while let Some(entry) = self.entries.pop() {
+            self.available_buffers.push(entry.buffer);
+        }
+    }
+
+    /// Draw text immediately (queues for render).
+    pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: [f32; 4]) {
+        let mut buffer = self.available_buffers.pop().unwrap_or_else(|| {
+            Buffer::new(
+                &mut self.font_system,
+                Metrics::new(font_size, font_size * 1.2),
+            )
+        });
+
+        buffer.set_metrics(
+            &mut self.font_system,
+            Metrics::new(font_size, font_size * 1.2),
+        );
+        buffer.set_text(
             &mut self.font_system,
             text,
             &Attrs::new().family(Family::Monospace),
             Shaping::Advanced,
             None,
         );
+        buffer.shape_until_scroll(&mut self.font_system, false);
+
+        self.entries.push(TextEntry {
+            buffer,
+            left: x,
+            top: y,
+            color: Color::rgba(
+                (color[0] * 255.0) as u8,
+                (color[1] * 255.0) as u8,
+                (color[2] * 255.0) as u8,
+                (color[3] * 255.0) as u8,
+            ),
+        });
     }
 
-    /// Shape the text at the given width.
-    pub fn shape(&mut self, width: f32) {
-        self.buffer
-            .set_size(&mut self.font_system, Some(width), None);
-        self.buffer.shape_until_scroll(&mut self.font_system, false);
+    /// Measure text dimensions.
+    pub fn measure(&mut self, text: &str, font_size: f32) -> (f32, f32) {
+        self.scratch_buffer.set_metrics(
+            &mut self.font_system,
+            Metrics::new(font_size, font_size * 1.2),
+        );
+        self.scratch_buffer.set_text(
+            &mut self.font_system,
+            text,
+            &Attrs::new().family(Family::Monospace),
+            Shaping::Advanced,
+            None,
+        );
+        self.scratch_buffer
+            .shape_until_scroll(&mut self.font_system, false);
+
+        let mut width = 0.0f32;
+        let mut height = 0.0f32;
+
+        for run in self.scratch_buffer.layout_runs() {
+            width = width.max(run.line_w);
+            height += run.line_height;
+        }
+
+        if height == 0.0 && !text.is_empty() {
+            height = font_size * 1.2;
+        }
+
+        (width, height)
     }
 
     /// Render the text to a render pass.
@@ -82,38 +148,33 @@ impl TextRenderer {
     pub fn render(
         &mut self,
         ctx: &WgpuContext,
+        encoder: &mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
         width: u32,
         height: u32,
-        x: f32,
-        y: f32,
-        color: [f32; 4],
     ) -> anyhow::Result<()> {
         // Update viewport
         self.viewport
             .update(&ctx.queue, Resolution { width, height });
 
-        let text_color = Color::rgba(
-            (color[0] * 255.0) as u8,
-            (color[1] * 255.0) as u8,
-            (color[2] * 255.0) as u8,
-            (color[3] * 255.0) as u8,
-        );
+        let mut text_areas = Vec::with_capacity(self.entries.len());
 
-        let text_areas = [TextArea {
-            buffer: &self.buffer,
-            left: x,
-            top: y,
-            scale: 1.0,
-            bounds: TextBounds {
-                left: 0,
-                top: 0,
-                right: width as i32,
-                bottom: height as i32,
-            },
-            default_color: text_color,
-            custom_glyphs: &[],
-        }];
+        for entry in &self.entries {
+            text_areas.push(TextArea {
+                buffer: &entry.buffer,
+                left: entry.left,
+                top: entry.top,
+                scale: 1.0,
+                bounds: TextBounds {
+                    left: 0,
+                    top: 0,
+                    right: width as i32,
+                    bottom: height as i32,
+                },
+                default_color: entry.color,
+                custom_glyphs: &[],
+            });
+        }
 
         self.renderer.prepare(
             &ctx.device,
@@ -125,7 +186,6 @@ impl TextRenderer {
             &mut self.swash_cache,
         )?;
 
-        let mut encoder = ctx.create_encoder(Some("text encoder"));
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("text render pass"),
@@ -147,8 +207,6 @@ impl TextRenderer {
             self.renderer
                 .render(&self.atlas, &self.viewport, &mut pass)?;
         }
-
-        ctx.submit([encoder.finish()]);
 
         Ok(())
     }

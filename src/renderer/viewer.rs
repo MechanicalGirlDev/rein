@@ -2,23 +2,9 @@
 //!
 //! Provides camera types for 3D rendering.
 
+#[cfg(feature = "window")]
+use crate::window::frame_io::Viewport;
 use glam::{Mat4, Vec3};
-
-/// Viewport information.
-#[derive(Debug, Clone, Copy)]
-pub struct Viewport {
-    pub x: u32,
-    pub y: u32,
-    pub width: u32,
-    pub height: u32,
-}
-
-impl Viewport {
-    /// Get the aspect ratio.
-    pub fn aspect(&self) -> f32 {
-        self.width as f32 / self.height as f32
-    }
-}
 
 /// Projection mode for a camera.
 #[derive(Debug, Clone, Copy)]
@@ -118,6 +104,7 @@ pub trait Viewer {
     }
 
     /// Get the viewport.
+    #[cfg(feature = "window")]
     fn viewport(&self) -> Viewport;
 }
 
@@ -133,6 +120,7 @@ pub struct Camera {
     /// Projection mode.
     pub projection: Projection,
     /// Viewport.
+    #[cfg(feature = "window")]
     viewport: Viewport,
 }
 
@@ -152,6 +140,7 @@ impl Camera {
             target,
             up,
             projection: Projection::perspective(fov_degrees, aspect, near, far),
+            #[cfg(feature = "window")]
             viewport: Viewport {
                 x: 0,
                 y: 0,
@@ -176,6 +165,7 @@ impl Camera {
             target,
             up,
             projection: Projection::orthographic(width, height, near, far),
+            #[cfg(feature = "window")]
             viewport: Viewport {
                 x: 0,
                 y: 0,
@@ -186,6 +176,7 @@ impl Camera {
     }
 
     /// Set the viewport and update aspect ratio.
+    #[cfg(feature = "window")]
     pub fn set_viewport(&mut self, viewport: Viewport) {
         self.viewport = viewport;
         self.projection.set_aspect(viewport.aspect());
@@ -215,6 +206,7 @@ impl Viewer for Camera {
         self.projection.matrix()
     }
 
+    #[cfg(feature = "window")]
     fn viewport(&self) -> Viewport {
         self.viewport
     }
