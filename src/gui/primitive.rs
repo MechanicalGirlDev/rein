@@ -174,6 +174,7 @@ impl PrimitiveRenderer {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn push_quad(
         &mut self,
         x: f32,
