@@ -407,8 +407,7 @@ impl GpuPhysics {
         let shape_size = (max_bodies * std::mem::size_of::<GpuShapeData>()) as u64;
         let shape_buffer = StorageBuffer::new(ctx, shape_size, Some("shape buffer"));
 
-        let result_size =
-            (max_narrowphase_pairs * std::mem::size_of::<NarrowphaseResult>()) as u64;
+        let result_size = (max_narrowphase_pairs * std::mem::size_of::<NarrowphaseResult>()) as u64;
         let narrowphase_result_buffer =
             StorageBuffer::new(ctx, result_size, Some("narrowphase result buffer"));
 
@@ -697,8 +696,7 @@ impl GpuPhysics {
             let a_idx = pair.entity_a as usize;
             let b_idx = pair.entity_b as usize;
 
-            let (Some(&entity_a), Some(&entity_b)) =
-                (entity_map.get(a_idx), entity_map.get(b_idx))
+            let (Some(&entity_a), Some(&entity_b)) = (entity_map.get(a_idx), entity_map.get(b_idx))
             else {
                 continue;
             };
@@ -800,11 +798,7 @@ impl GpuPhysics {
     ///
     /// This avoids the broadphase->CPU->narrowphase roundtrip when all shapes
     /// are GPU-compatible. Returns the pair count used.
-    pub fn dispatch_narrowphase_direct(
-        &self,
-        ctx: &WgpuContext,
-        pair_count: u32,
-    ) {
+    pub fn dispatch_narrowphase_direct(&self, ctx: &WgpuContext, pair_count: u32) {
         if pair_count == 0 {
             return;
         }
