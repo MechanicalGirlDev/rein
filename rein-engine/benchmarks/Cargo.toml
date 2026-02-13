@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-rein = { path = "..", features = ["physics", "gpu-physics", "compute"] }
+rein = { package = "rein-engine", path = "..", features = ["physics", "gpu-physics", "compute"] }
 glam = "0.31"
 hecs = "0.10"
 anyhow = "1"

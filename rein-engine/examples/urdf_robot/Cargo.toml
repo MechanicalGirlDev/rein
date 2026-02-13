@@ -1,10 +1,9 @@
 [package]
-name = "engine_app"
+name = "urdf_robot"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rein = { path = "../..", features = ["engine"] }
+rein = { package = "rein-engine", path = "../.." }
 glam = "0.31"
 anyhow = "1"
-hecs = "0.10"

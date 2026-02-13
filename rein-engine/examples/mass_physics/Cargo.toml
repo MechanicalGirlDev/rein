@@ -8,7 +8,7 @@ default = []
 gpu-physics = ["rein/gpu-physics", "rein/compute"]
 
 [dependencies]
-rein = { path = "../..", features = ["engine", "physics"] }
+rein = { package = "rein-engine", path = "../..", features = ["engine", "physics"] }
 glam = "0.31"
 anyhow = "1"
 hecs = "0.10"

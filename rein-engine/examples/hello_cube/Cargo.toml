@@ -1,9 +1,9 @@
 [package]
-name = "urdf_robot"
+name = "hello_cube"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rein = { path = "../.." }
+rein = { package = "rein-engine", path = "../.." }
 glam = "0.31"
 anyhow = "1"
