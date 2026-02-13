@@ -95,6 +95,12 @@ impl PhysicsWorld {
         Ok(())
     }
 
+    /// Get a reference to the GPU physics instance, if initialized.
+    #[cfg(feature = "gpu-physics")]
+    pub fn gpu_physics_ref(&self) -> Option<&gpu::GpuPhysics> {
+        self.gpu_physics.as_ref()
+    }
+
     /// Step the physics simulation forward by `delta_time` seconds.
     ///
     /// Uses a fixed timestep accumulator to ensure deterministic simulation.
