@@ -25,35 +25,35 @@ use rein_bench::*;
 #[library_benchmark]
 fn broadphase_100() {
     let world = setup_sphere_world(black_box(100));
-    let bp = SweepAndPrune::new();
+    let mut bp = SweepAndPrune::new();
     black_box(bp.find_pairs(&world));
 }
 
 #[library_benchmark]
 fn broadphase_500() {
     let world = setup_sphere_world(black_box(500));
-    let bp = SweepAndPrune::new();
+    let mut bp = SweepAndPrune::new();
     black_box(bp.find_pairs(&world));
 }
 
 #[library_benchmark]
 fn broadphase_1000() {
     let world = setup_sphere_world(black_box(1000));
-    let bp = SweepAndPrune::new();
+    let mut bp = SweepAndPrune::new();
     black_box(bp.find_pairs(&world));
 }
 
 #[library_benchmark]
 fn broadphase_mixed_500() {
     let world = setup_mixed_world(black_box(500));
-    let bp = SweepAndPrune::new();
+    let mut bp = SweepAndPrune::new();
     black_box(bp.find_pairs(&world));
 }
 
 #[library_benchmark]
 fn broadphase_sparse_500() {
     let world = setup_sparse_world(black_box(500));
-    let bp = SweepAndPrune::new();
+    let mut bp = SweepAndPrune::new();
     black_box(bp.find_pairs(&world));
 }
 
@@ -242,6 +242,30 @@ library_benchmark_group!(
 );
 
 // ---------------------------------------------------------------------------
+// Sleep effect
+// ---------------------------------------------------------------------------
+
+#[library_benchmark]
+fn sleep_settled_scene_100() {
+    let (mut world, mut physics) = setup_scene(black_box(100));
+    // Settle bodies
+    for _ in 0..300 {
+        physics.step(&mut world, 1.0 / 60.0);
+    }
+    // Measure stepping a settled scene
+    for _ in 0..60 {
+        physics.step(&mut world, 1.0 / 60.0);
+    }
+    black_box(&world);
+}
+
+library_benchmark_group!(
+    name = sleep_group;
+    benchmarks =
+        sleep_settled_scene_100
+);
+
+// ---------------------------------------------------------------------------
 // GPU physics
 // ---------------------------------------------------------------------------
 
@@ -289,5 +313,6 @@ main!(
         solver_group,
         pipeline_group,
         mass_physics_group,
+        sleep_group,
         gpu_group
 );

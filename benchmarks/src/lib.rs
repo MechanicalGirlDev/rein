@@ -17,7 +17,7 @@
 //!   cargo bench --manifest-path benchmarks/Cargo.toml --bench physics -- gpu
 
 use glam::{Mat4, Vec3};
-use rein::ecs::components::physics::{Collider, ColliderShape, RigidBody};
+use rein::ecs::components::physics::{Collider, ColliderShape, RigidBody, SleepInfo};
 use rein::ecs::components::transform::{GlobalTransform, Transform};
 use rein::physics::contact::{ContactManifold, ContactPoint};
 use rein::physics::{PhysicsConfig, PhysicsWorld};
@@ -144,6 +144,7 @@ pub fn setup_scene(n: usize) -> (hecs::World, PhysicsWorld) {
                 Transform::from_position(pos),
                 GlobalTransform(Mat4::from_translation(pos)),
                 RigidBody::new_dynamic(1.0),
+                SleepInfo::default(),
                 Collider {
                     shape: ColliderShape::Sphere { radius: 0.5 },
                     offset: Vec3::ZERO,
@@ -155,6 +156,7 @@ pub fn setup_scene(n: usize) -> (hecs::World, PhysicsWorld) {
                 Transform::from_position(pos),
                 GlobalTransform(Mat4::from_translation(pos)),
                 RigidBody::new_dynamic(1.0),
+                SleepInfo::default(),
                 Collider {
                     shape: ColliderShape::Box {
                         half_extents: Vec3::splat(0.4),
@@ -263,6 +265,7 @@ fn spawn_object(world: &mut hecs::World, index: usize) {
         Transform::from_position(pos),
         GlobalTransform(Mat4::from_translation(pos)),
         RigidBody::new_dynamic(1.0),
+        SleepInfo::default(),
         Collider {
             shape,
             offset: Vec3::ZERO,

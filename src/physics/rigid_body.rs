@@ -2,13 +2,21 @@
 
 use glam::{Quat, Vec3};
 
-use crate::ecs::components::physics::{RigidBody, RigidBodyType};
+use crate::ecs::components::physics::{RigidBody, RigidBodyType, SleepInfo, SleepState};
 use crate::ecs::components::transform::{GlobalTransform, Transform};
+
+/// Linear velocity threshold for sleep eligibility.
+const LINEAR_SLEEP_THRESHOLD: f32 = 0.1;
+/// Angular velocity threshold for sleep eligibility.
+const ANGULAR_SLEEP_THRESHOLD: f32 = 0.05;
+/// Time in seconds a body must be below thresholds before sleeping.
+const SLEEP_TIME: f32 = 1.0;
 
 /// Apply gravity force to all dynamic rigid bodies.
 pub fn apply_gravity(world: &mut hecs::World, gravity: Vec3) {
-    for (_, rb) in world.query_mut::<&mut RigidBody>() {
-        if rb.body_type == RigidBodyType::Dynamic && rb.mass > 0.0 {
+    for (_, (rb, sleep)) in world.query_mut::<(&mut RigidBody, Option<&SleepInfo>)>() {
+        let is_sleeping = sleep.map_or(false, |s| s.state == SleepState::Sleeping);
+        if rb.body_type == RigidBodyType::Dynamic && rb.mass > 0.0 && !is_sleeping {
             rb.force_accumulator += gravity * rb.mass * rb.gravity_scale;
         }
     }
@@ -16,8 +24,9 @@ pub fn apply_gravity(world: &mut hecs::World, gravity: Vec3) {
 
 /// Integrate velocities using semi-implicit Euler: v += (F/m) * dt.
 pub fn integrate_velocities(world: &mut hecs::World, dt: f32) {
-    for (_, rb) in world.query_mut::<&mut RigidBody>() {
-        if rb.body_type != RigidBodyType::Dynamic || rb.mass <= 0.0 {
+    for (_, (rb, sleep)) in world.query_mut::<(&mut RigidBody, Option<&SleepInfo>)>() {
+        let is_sleeping = sleep.map_or(false, |s| s.state == SleepState::Sleeping);
+        if rb.body_type != RigidBodyType::Dynamic || rb.mass <= 0.0 || is_sleeping {
             continue;
         }
 
@@ -55,8 +64,11 @@ pub fn integrate_velocities(world: &mut hecs::World, dt: f32) {
 
 /// Integrate positions: p += v * dt, q += 0.5 * omega * q * dt.
 pub fn integrate_positions(world: &mut hecs::World, dt: f32) {
-    for (_, (rb, transform)) in world.query_mut::<(&RigidBody, &mut Transform)>() {
-        if rb.body_type != RigidBodyType::Dynamic {
+    for (_, (rb, transform, sleep)) in
+        world.query_mut::<(&RigidBody, &mut Transform, Option<&SleepInfo>)>()
+    {
+        let is_sleeping = sleep.map_or(false, |s| s.state == SleepState::Sleeping);
+        if rb.body_type != RigidBodyType::Dynamic || is_sleeping {
             continue;
         }
 
@@ -92,6 +104,43 @@ pub fn clear_forces(world: &mut hecs::World) {
     for (_, rb) in world.query_mut::<&mut RigidBody>() {
         rb.force_accumulator = Vec3::ZERO;
         rb.torque_accumulator = Vec3::ZERO;
+    }
+}
+
+/// Update sleep states for all dynamic bodies.
+///
+/// Bodies with velocities below thresholds for `SLEEP_TIME` seconds
+/// transition to `Sleeping`. Sleeping bodies skip integration and gravity.
+pub fn update_sleep_states(world: &mut hecs::World, dt: f32) {
+    for (_, (rb, sleep)) in world.query_mut::<(&mut RigidBody, &mut SleepInfo)>() {
+        if rb.body_type != RigidBodyType::Dynamic {
+            continue;
+        }
+
+        let linear_speed = rb.linear_velocity.length();
+        let angular_speed = rb.angular_velocity.length();
+
+        if linear_speed < LINEAR_SLEEP_THRESHOLD && angular_speed < ANGULAR_SLEEP_THRESHOLD {
+            sleep.timer += dt;
+            if sleep.timer >= SLEEP_TIME {
+                sleep.state = SleepState::Sleeping;
+                rb.linear_velocity = Vec3::ZERO;
+                rb.angular_velocity = Vec3::ZERO;
+            }
+        } else {
+            sleep.timer = 0.0;
+            sleep.state = SleepState::Awake;
+        }
+    }
+}
+
+/// Wake up a specific entity's rigid body (used when collisions are detected with sleeping bodies).
+pub fn wake_body(world: &mut hecs::World, entity: hecs::Entity) {
+    if let Ok(mut sleep) = world.get::<&mut SleepInfo>(entity) {
+        if sleep.state == SleepState::Sleeping {
+            sleep.state = SleepState::Awake;
+            sleep.timer = 0.0;
+        }
     }
 }
 

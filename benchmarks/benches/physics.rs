@@ -23,7 +23,7 @@ fn bench_broadphase(c: &mut Criterion) {
         let mut group = c.benchmark_group("broadphase/uniform_spheres");
         for &n in &[100, 500, 1000, 2000] {
             let world = setup_sphere_world(n);
-            let broadphase = SweepAndPrune::new();
+            let mut broadphase = SweepAndPrune::new();
             group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
                 b.iter(|| broadphase.find_pairs(&world));
             });
@@ -35,7 +35,7 @@ fn bench_broadphase(c: &mut Criterion) {
         let mut group = c.benchmark_group("broadphase/mixed_shapes");
         for &n in &[100, 500, 1000, 2000] {
             let world = setup_mixed_world(n);
-            let broadphase = SweepAndPrune::new();
+            let mut broadphase = SweepAndPrune::new();
             group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
                 b.iter(|| broadphase.find_pairs(&world));
             });
@@ -47,7 +47,7 @@ fn bench_broadphase(c: &mut Criterion) {
         let mut group = c.benchmark_group("broadphase/sparse");
         for &n in &[100, 500, 1000, 2000] {
             let world = setup_sparse_world(n);
-            let broadphase = SweepAndPrune::new();
+            let mut broadphase = SweepAndPrune::new();
             group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
                 b.iter(|| broadphase.find_pairs(&world));
             });
@@ -268,7 +268,7 @@ fn bench_pipeline(c: &mut Criterion) {
         let n = 500;
         let (world, _) = setup_scene(n);
 
-        let broadphase = SweepAndPrune::new();
+        let mut broadphase = SweepAndPrune::new();
         group.bench_function("broadphase_500", |b| {
             b.iter(|| broadphase.find_pairs(&world));
         });
@@ -371,6 +371,39 @@ fn bench_mass_physics(c: &mut Criterion) {
 }
 
 // ---------------------------------------------------------------------------
+// Sleep effect (stable scene where bodies settle and sleep)
+// ---------------------------------------------------------------------------
+
+fn bench_sleep_effect(c: &mut Criterion) {
+    {
+        let mut group = c.benchmark_group("sleep/settled_scene");
+        group.sample_size(10);
+        for &n in &[100, 500] {
+            group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, &n| {
+                b.iter_batched(
+                    || {
+                        // Pre-run the scene so bodies settle and start sleeping
+                        let (mut world, mut physics) = setup_scene(n);
+                        for _ in 0..300 {
+                            physics.step(&mut world, 1.0 / 60.0);
+                        }
+                        (world, physics)
+                    },
+                    |(mut world, mut physics)| {
+                        // Measure stepping a settled scene (most bodies should be sleeping)
+                        for _ in 0..60 {
+                            physics.step(&mut world, 1.0 / 60.0);
+                        }
+                    },
+                    criterion::BatchSize::LargeInput,
+                );
+            });
+        }
+        group.finish();
+    }
+}
+
+// ---------------------------------------------------------------------------
 // GPU physics
 // ---------------------------------------------------------------------------
 
@@ -435,7 +468,7 @@ fn bench_gpu_physics(c: &mut Criterion) {
                 &n,
                 |b, _| {
                     b.iter(|| {
-                        let (body_count, _entity_map) = gpu_physics.upload_aabbs(&ctx, &world);
+                        let (body_count, _entity_map, _max_extent) = gpu_physics.upload_aabbs(&ctx, &world);
                         gpu_physics.dispatch_broadphase(&ctx, body_count);
                         gpu_physics.readback_pairs(&ctx)
                     });
@@ -487,6 +520,7 @@ criterion_group!(
     bench_solver,
     bench_pipeline,
     bench_mass_physics,
+    bench_sleep_effect,
     bench_gpu_physics,
 );
 criterion_main!(benches);

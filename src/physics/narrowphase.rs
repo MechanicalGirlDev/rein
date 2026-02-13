@@ -26,6 +26,7 @@ impl Simplex {
 }
 
 /// Minkowski difference support function.
+#[inline]
 fn minkowski_support(
     shape_a: &ColliderShape,
     transform_a: &GlobalTransform,
@@ -381,6 +382,7 @@ fn epa_fallback(
 }
 
 /// Specialized sphere-sphere intersection test.
+#[inline]
 pub fn sphere_sphere(
     shape_a: &ColliderShape,
     transform_a: &GlobalTransform,
@@ -395,9 +397,16 @@ pub fn sphere_sphere(
     let center_a = transform_a.0.transform_point3(Vec3::ZERO);
     let center_b = transform_b.0.transform_point3(Vec3::ZERO);
 
-    // Account for scale
-    let scale_a = transform_a.0.x_axis.truncate().length();
-    let scale_b = transform_b.0.x_axis.truncate().length();
+    // Account for scale (use max axis to handle non-uniform scaling)
+    // Use length_squared + single sqrt: max(sqrt(a),sqrt(b)) == sqrt(max(a,b))
+    let scale_a = transform_a.0.x_axis.truncate().length_squared()
+        .max(transform_a.0.y_axis.truncate().length_squared())
+        .max(transform_a.0.z_axis.truncate().length_squared())
+        .sqrt();
+    let scale_b = transform_b.0.x_axis.truncate().length_squared()
+        .max(transform_b.0.y_axis.truncate().length_squared())
+        .max(transform_b.0.z_axis.truncate().length_squared())
+        .sqrt();
     let world_radius_a = radius_a * scale_a;
     let world_radius_b = radius_b * scale_b;
 
@@ -423,6 +432,7 @@ pub fn sphere_sphere(
 }
 
 /// SAT (Separating Axis Theorem) test for box-box collision.
+#[inline]
 pub fn sat_box_box(
     half_a: Vec3,
     transform_a: glam::Mat4,
@@ -536,6 +546,7 @@ pub fn sat_box_box(
 }
 
 /// Test a single SAT axis. Returns Some(overlap) if overlapping, None if separating.
+#[inline]
 fn sat_test_axis(
     axis: Vec3,
     axes_a: &[Vec3; 3],
@@ -564,6 +575,7 @@ fn sat_test_axis(
 }
 
 /// Specialized box-sphere intersection test.
+#[inline]
 pub fn box_sphere(
     half_extents: Vec3,
     box_transform: &GlobalTransform,
@@ -573,8 +585,11 @@ pub fn box_sphere(
     let sphere_center = sphere_transform.0.transform_point3(Vec3::ZERO);
     let box_center = box_transform.0.transform_point3(Vec3::ZERO);
 
-    // Account for sphere scale
-    let sphere_scale = sphere_transform.0.x_axis.truncate().length();
+    // Account for sphere scale (use max axis for non-uniform scaling)
+    let sphere_scale = sphere_transform.0.x_axis.truncate().length_squared()
+        .max(sphere_transform.0.y_axis.truncate().length_squared())
+        .max(sphere_transform.0.z_axis.truncate().length_squared())
+        .sqrt();
     let world_radius = radius * sphere_scale;
 
     // Box local axes (normalized)

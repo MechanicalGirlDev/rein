@@ -2,6 +2,35 @@
 
 use glam::Vec3;
 
+/// Sleep state for rigid bodies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SleepState {
+    /// Body is actively simulated.
+    Awake,
+    /// Body is at rest and skipped by most pipeline stages.
+    Sleeping,
+}
+
+/// Separate sleep tracking component.
+///
+/// Kept outside `RigidBody` so that the solver's tight loop (which only
+/// needs mass, velocity, etc.) doesn't pay for the extra cache-line
+/// pressure of sleep bookkeeping.
+#[derive(Debug, Clone)]
+pub struct SleepInfo {
+    pub state: SleepState,
+    pub timer: f32,
+}
+
+impl Default for SleepInfo {
+    fn default() -> Self {
+        Self {
+            state: SleepState::Awake,
+            timer: 0.0,
+        }
+    }
+}
+
 /// Rigid body type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RigidBodyType {

@@ -14,6 +14,7 @@ pub struct PhysicsAabb {
 
 impl PhysicsAabb {
     /// Test whether two AABBs overlap.
+    #[inline]
     pub fn overlaps(&self, other: &PhysicsAabb) -> bool {
         self.min.x <= other.max.x
             && self.max.x >= other.min.x
@@ -26,6 +27,7 @@ impl PhysicsAabb {
 
 impl ColliderShape {
     /// GJK/EPA support function. Returns the farthest point in the given direction.
+    #[inline]
     pub fn support(&self, direction: Vec3, transform: &GlobalTransform) -> Vec3 {
         let mat = transform.0;
         let inv = mat.inverse();
@@ -115,6 +117,7 @@ impl ColliderShape {
     }
 
     /// Compute the world-space AABB for this shape.
+    #[inline]
     pub fn compute_aabb(&self, transform: &GlobalTransform) -> PhysicsAabb {
         let mat = transform.0;
 
@@ -170,6 +173,7 @@ impl ColliderShape {
 }
 
 /// Compute world-space AABB from local half-extents and a transform matrix.
+#[inline]
 fn aabb_from_extents(half_extents: Vec3, mat: Mat4) -> PhysicsAabb {
     let center = mat.transform_point3(Vec3::ZERO);
 

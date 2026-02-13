@@ -1,4 +1,6 @@
-//! Broadphase collision detection using AABB overlap tests.
+//! Broadphase collision detection using spatial hash grid.
+
+use std::collections::HashMap;
 
 use glam::Vec3;
 
@@ -7,26 +9,49 @@ use crate::ecs::components::transform::GlobalTransform;
 
 use super::collider::PhysicsAabb;
 
-/// Sweep-and-prune broadphase (currently O(n^2) pair-wise AABB test).
-pub struct SweepAndPrune;
+type CellKey = (i32, i32, i32);
+type CellEntry = (hecs::Entity, PhysicsAabb, RigidBodyType);
 
-impl Default for SweepAndPrune {
+/// Spatial hash grid broadphase for O(n) average-case pair detection.
+pub struct SpatialHashGrid {
+    cell_size: f32,
+    cells: HashMap<CellKey, Vec<CellEntry>>,
+}
+
+impl Default for SpatialHashGrid {
     fn default() -> Self {
-        Self
+        Self::new()
     }
 }
 
-impl SweepAndPrune {
+impl SpatialHashGrid {
     pub fn new() -> Self {
-        Self
+        Self {
+            cell_size: 2.0,
+            cells: HashMap::new(),
+        }
+    }
+
+    /// Compute cell coordinates for a point.
+    #[inline]
+    fn cell_coords(&self, point: Vec3) -> (i32, i32, i32) {
+        let inv = 1.0 / self.cell_size;
+        (
+            (point.x * inv).floor() as i32,
+            (point.y * inv).floor() as i32,
+            (point.z * inv).floor() as i32,
+        )
     }
 
     /// Find all pairs of entities whose AABBs overlap.
     ///
     /// Only returns pairs where at least one entity is dynamic.
-    pub fn find_pairs(&self, world: &hecs::World) -> Vec<(hecs::Entity, hecs::Entity)> {
-        // Collect all entities with colliders and their AABBs
+    pub fn find_pairs(&mut self, world: &hecs::World) -> Vec<(hecs::Entity, hecs::Entity)> {
+        self.cells.clear();
+
+        // Collect all entries and determine max AABB size for cell sizing
         let mut entries: Vec<(hecs::Entity, PhysicsAabb, RigidBodyType)> = Vec::new();
+        let mut max_extent: f32 = 0.0;
 
         for (entity, (collider, transform, rb)) in world
             .query::<(&Collider, &GlobalTransform, &RigidBody)>()
@@ -35,30 +60,70 @@ impl SweepAndPrune {
             if collider.is_sensor {
                 continue;
             }
-            // Offset the transform by the collider offset
             let mut adjusted_transform = *transform;
             if collider.offset != Vec3::ZERO {
                 adjusted_transform.0 *= glam::Mat4::from_translation(collider.offset);
             }
             let aabb = collider.shape.compute_aabb(&adjusted_transform);
+
+            let extent = (aabb.max - aabb.min).max_element();
+            if extent > max_extent {
+                max_extent = extent;
+            }
+
             entries.push((entity, aabb, rb.body_type));
         }
 
-        let mut pairs = Vec::new();
+        // Set cell size to 2x the max AABB extent (minimum 1.0)
+        self.cell_size = (max_extent * 2.0).max(1.0);
 
-        // O(n^2) brute force - sufficient for small numbers of entities
-        for i in 0..entries.len() {
-            for j in (i + 1)..entries.len() {
-                let (entity_a, aabb_a, type_a) = &entries[i];
-                let (entity_b, aabb_b, type_b) = &entries[j];
+        // Insert entries into cells
+        for &(entity, ref aabb, body_type) in &entries {
+            let min_cell = self.cell_coords(aabb.min);
+            let max_cell = self.cell_coords(aabb.max);
 
-                // Skip static-static pairs
-                if *type_a == RigidBodyType::Static && *type_b == RigidBodyType::Static {
-                    continue;
+            for cx in min_cell.0..=max_cell.0 {
+                for cy in min_cell.1..=max_cell.1 {
+                    for cz in min_cell.2..=max_cell.2 {
+                        self.cells
+                            .entry((cx, cy, cz))
+                            .or_default()
+                            .push((entity, *aabb, body_type));
+                    }
                 }
+            }
+        }
 
-                if aabb_a.overlaps(aabb_b) {
-                    pairs.push((*entity_a, *entity_b));
+        // Find pairs within each cell
+        let mut pairs = Vec::with_capacity(entries.len() * 4);
+        let mut seen = HashMap::new();
+
+        for cell in self.cells.values() {
+            for i in 0..cell.len() {
+                for j in (i + 1)..cell.len() {
+                    let (entity_a, ref aabb_a, type_a) = cell[i];
+                    let (entity_b, ref aabb_b, type_b) = cell[j];
+
+                    // Skip static-static pairs
+                    if type_a == RigidBodyType::Static && type_b == RigidBodyType::Static {
+                        continue;
+                    }
+
+                    // Canonical ordering to avoid duplicates
+                    let pair = if entity_a < entity_b {
+                        (entity_a, entity_b)
+                    } else {
+                        (entity_b, entity_a)
+                    };
+
+                    if seen.contains_key(&pair) {
+                        continue;
+                    }
+
+                    if aabb_a.overlaps(aabb_b) {
+                        seen.insert(pair, ());
+                        pairs.push(pair);
+                    }
                 }
             }
         }
@@ -66,6 +131,9 @@ impl SweepAndPrune {
         pairs
     }
 }
+
+/// Legacy alias for backward compatibility.
+pub type SweepAndPrune = SpatialHashGrid;
 
 #[cfg(test)]
 mod tests {
@@ -101,7 +169,7 @@ mod tests {
             },
         ));
 
-        let broadphase = SweepAndPrune::new();
+        let mut broadphase = SpatialHashGrid::new();
         let pairs = broadphase.find_pairs(&world);
         assert_eq!(pairs.len(), 1);
     }
@@ -133,7 +201,7 @@ mod tests {
             },
         ));
 
-        let broadphase = SweepAndPrune::new();
+        let mut broadphase = SpatialHashGrid::new();
         let pairs = broadphase.find_pairs(&world);
         assert!(pairs.is_empty());
     }
@@ -165,8 +233,35 @@ mod tests {
             },
         ));
 
-        let broadphase = SweepAndPrune::new();
+        let mut broadphase = SpatialHashGrid::new();
         let pairs = broadphase.find_pairs(&world);
         assert!(pairs.is_empty());
+    }
+
+    #[test]
+    fn test_broadphase_many_bodies() {
+        let mut world = hecs::World::new();
+
+        // Create a grid of overlapping spheres
+        for i in 0..10 {
+            for j in 0..10 {
+                let pos = Vec3::new(i as f32 * 1.5, 0.0, j as f32 * 1.5);
+                world.spawn((
+                    Transform::from_position(pos),
+                    GlobalTransform(Mat4::from_translation(pos)),
+                    RigidBody::new_dynamic(1.0),
+                    Collider {
+                        shape: ColliderShape::Sphere { radius: 1.0 },
+                        offset: Vec3::ZERO,
+                        is_sensor: false,
+                    },
+                ));
+            }
+        }
+
+        let mut broadphase = SpatialHashGrid::new();
+        let pairs = broadphase.find_pairs(&world);
+        // Should find some pairs (adjacent spheres overlap)
+        assert!(!pairs.is_empty());
     }
 }
