@@ -399,11 +399,19 @@ pub fn sphere_sphere(
 
     // Account for scale (use max axis to handle non-uniform scaling)
     // Use length_squared + single sqrt: max(sqrt(a),sqrt(b)) == sqrt(max(a,b))
-    let scale_a = transform_a.0.x_axis.truncate().length_squared()
+    let scale_a = transform_a
+        .0
+        .x_axis
+        .truncate()
+        .length_squared()
         .max(transform_a.0.y_axis.truncate().length_squared())
         .max(transform_a.0.z_axis.truncate().length_squared())
         .sqrt();
-    let scale_b = transform_b.0.x_axis.truncate().length_squared()
+    let scale_b = transform_b
+        .0
+        .x_axis
+        .truncate()
+        .length_squared()
         .max(transform_b.0.y_axis.truncate().length_squared())
         .max(transform_b.0.z_axis.truncate().length_squared())
         .sqrt();
@@ -586,7 +594,11 @@ pub fn box_sphere(
     let box_center = box_transform.0.transform_point3(Vec3::ZERO);
 
     // Account for sphere scale (use max axis for non-uniform scaling)
-    let sphere_scale = sphere_transform.0.x_axis.truncate().length_squared()
+    let sphere_scale = sphere_transform
+        .0
+        .x_axis
+        .truncate()
+        .length_squared()
         .max(sphere_transform.0.y_axis.truncate().length_squared())
         .max(sphere_transform.0.z_axis.truncate().length_squared())
         .sqrt();
@@ -692,18 +704,10 @@ pub fn detect_collision(
                 half_extents: half_b,
             },
         ) => sat_box_box(*half_a, transform_a.0, *half_b, transform_b.0),
-        (
-            ColliderShape::Box {
-                half_extents: half,
-            },
-            ColliderShape::Sphere { radius },
-        ) => box_sphere(*half, transform_a, *radius, transform_b),
-        (
-            ColliderShape::Sphere { radius },
-            ColliderShape::Box {
-                half_extents: half,
-            },
-        ) => {
+        (ColliderShape::Box { half_extents: half }, ColliderShape::Sphere { radius }) => {
+            box_sphere(*half, transform_a, *radius, transform_b)
+        }
+        (ColliderShape::Sphere { radius }, ColliderShape::Box { half_extents: half }) => {
             // Swap and flip normal
             let mut info = box_sphere(*half, transform_b, *radius, transform_a)?;
             info.normal = -info.normal;

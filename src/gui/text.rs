@@ -80,10 +80,16 @@ impl TextRenderer {
     /// Draw text immediately (queues for render).
     pub fn draw_text(&mut self, text: &str, x: f32, y: f32, font_size: f32, color: [f32; 4]) {
         let mut buffer = self.available_buffers.pop().unwrap_or_else(|| {
-            Buffer::new(&mut self.font_system, Metrics::new(font_size, font_size * 1.2))
+            Buffer::new(
+                &mut self.font_system,
+                Metrics::new(font_size, font_size * 1.2),
+            )
         });
 
-        buffer.set_metrics(&mut self.font_system, Metrics::new(font_size, font_size * 1.2));
+        buffer.set_metrics(
+            &mut self.font_system,
+            Metrics::new(font_size, font_size * 1.2),
+        );
         buffer.set_text(
             &mut self.font_system,
             text,
@@ -108,7 +114,10 @@ impl TextRenderer {
 
     /// Measure text dimensions.
     pub fn measure(&mut self, text: &str, font_size: f32) -> (f32, f32) {
-        self.scratch_buffer.set_metrics(&mut self.font_system, Metrics::new(font_size, font_size * 1.2));
+        self.scratch_buffer.set_metrics(
+            &mut self.font_system,
+            Metrics::new(font_size, font_size * 1.2),
+        );
         self.scratch_buffer.set_text(
             &mut self.font_system,
             text,
@@ -116,7 +125,8 @@ impl TextRenderer {
             Shaping::Advanced,
             None,
         );
-        self.scratch_buffer.shape_until_scroll(&mut self.font_system, false);
+        self.scratch_buffer
+            .shape_until_scroll(&mut self.font_system, false);
 
         let mut width = 0.0f32;
         let mut height = 0.0f32;
@@ -127,7 +137,7 @@ impl TextRenderer {
         }
 
         if height == 0.0 && !text.is_empty() {
-             height = font_size * 1.2;
+            height = font_size * 1.2;
         }
 
         (width, height)

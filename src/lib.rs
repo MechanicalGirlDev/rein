@@ -50,13 +50,15 @@ pub use core::{
     VertexPC, VertexPN, VertexPNUC,
 };
 
+#[cfg(feature = "window")]
+pub use renderer::{FirstPersonControl, FlyControl, OrbitControl, Viewer};
+
 pub use renderer::{
     Aabb, AmbientLight, Attenuation, Axes, BoundingBoxMesh, Camera, ColorMaterial, DepthMaterial,
-    DirectionalLight, DirectionalShadow, FirstPersonControl, FlyControl, Frustum, FrustumCuller,
-    Geometry, Gm, GridMaterial, InstancedMesh, Intersection, Light, LineMaterial, LineStrip, Lines,
-    Material, Mesh, ModelUniform, NormalMaterial, Object, OrbitControl, PbrMaterial, PhongMaterial,
-    Plane, PointLight, Projection, ShadowConfig, ShadowMap, ShadowUniform, SpotLight,
-    UnlitMaterial, Viewer,
+    DirectionalLight, DirectionalShadow, Frustum, FrustumCuller, Geometry, Gm, GridMaterial,
+    InstancedMesh, Intersection, Light, LineMaterial, LineStrip, Lines, Material, Mesh,
+    ModelUniform, NormalMaterial, Object, PbrMaterial, PhongMaterial, Plane, PointLight,
+    Projection, ShadowConfig, ShadowMap, ShadowUniform, SpotLight, UnlitMaterial,
 };
 
 pub use urdf::{RobotModel, UrdfLoader};

@@ -44,10 +44,16 @@ impl UiContext {
                 Event::MouseMotion { position, .. } => {
                     self.mouse_pos = Vec2::new(position.0, position.1);
                 }
-                Event::MousePress { button: MouseButton::Left, .. } => {
+                Event::MousePress {
+                    button: MouseButton::Left,
+                    ..
+                } => {
                     self.mouse_down = true;
                 }
-                Event::MouseRelease { button: MouseButton::Left, .. } => {
+                Event::MouseRelease {
+                    button: MouseButton::Left,
+                    ..
+                } => {
                     self.mouse_down = false;
                     self.mouse_clicked = true;
                 }
@@ -60,9 +66,15 @@ impl UiContext {
     }
 
     /// Render the UI to a render pass.
-    pub fn render(&mut self, ctx: &WgpuContext, view: &wgpu::TextureView, encoder: &mut wgpu::CommandEncoder) -> anyhow::Result<()> {
+    pub fn render(
+        &mut self,
+        ctx: &WgpuContext,
+        view: &wgpu::TextureView,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> anyhow::Result<()> {
         // Render primitives
-        self.primitive.prepare(ctx, self.viewport_width, self.viewport_height);
+        self.primitive
+            .prepare(ctx, self.viewport_width, self.viewport_height);
 
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -85,7 +97,13 @@ impl UiContext {
         }
 
         // Render text (overlay)
-        self.text.render(ctx, encoder, view, self.viewport_width, self.viewport_height)?;
+        self.text.render(
+            ctx,
+            encoder,
+            view,
+            self.viewport_width,
+            self.viewport_height,
+        )?;
 
         Ok(())
     }
@@ -98,11 +116,16 @@ impl UiContext {
     /// Draw a button.
     pub fn button(&mut self, text: &str, x: f32, y: f32, w: f32, h: f32) -> bool {
         let mouse_pos = self.mouse_pos;
-        let hovered = mouse_pos.x >= x && mouse_pos.x <= x + w && mouse_pos.y >= y && mouse_pos.y <= y + h;
+        let hovered =
+            mouse_pos.x >= x && mouse_pos.x <= x + w && mouse_pos.y >= y && mouse_pos.y <= y + h;
         let clicked = hovered && self.mouse_clicked;
 
         let color = if hovered {
-            if self.mouse_down { [0.3, 0.3, 0.3, 1.0] } else { [0.4, 0.4, 0.4, 1.0] }
+            if self.mouse_down {
+                [0.3, 0.3, 0.3, 1.0]
+            } else {
+                [0.4, 0.4, 0.4, 1.0]
+            }
         } else {
             [0.2, 0.2, 0.2, 1.0]
         };
@@ -113,7 +136,8 @@ impl UiContext {
         let text_x = x + (w - text_w) / 2.0;
         let text_y = y + (h - text_h) / 2.0;
 
-        self.text.draw_text(text, text_x, text_y, 14.0, [1.0, 1.0, 1.0, 1.0]);
+        self.text
+            .draw_text(text, text_x, text_y, 14.0, [1.0, 1.0, 1.0, 1.0]);
 
         clicked
     }
@@ -122,21 +146,35 @@ impl UiContext {
     pub fn checkbox(&mut self, checked: bool, text: &str, x: f32, y: f32) -> bool {
         let size = 20.0;
         let mouse_pos = self.mouse_pos;
-        let hovered = mouse_pos.x >= x && mouse_pos.x <= x + size && mouse_pos.y >= y && mouse_pos.y <= y + size;
+        let hovered = mouse_pos.x >= x
+            && mouse_pos.x <= x + size
+            && mouse_pos.y >= y
+            && mouse_pos.y <= y + size;
         let clicked = hovered && self.mouse_clicked;
 
         let new_checked = if clicked { !checked } else { checked };
 
-        let color = if hovered { [0.4, 0.4, 0.4, 1.0] } else { [0.2, 0.2, 0.2, 1.0] };
+        let color = if hovered {
+            [0.4, 0.4, 0.4, 1.0]
+        } else {
+            [0.2, 0.2, 0.2, 1.0]
+        };
         self.primitive.draw_rect(x, y, size, size, color);
 
         if new_checked {
             let inner_size = size * 0.6;
             let offset = (size - inner_size) / 2.0;
-            self.primitive.draw_rect(x + offset, y + offset, inner_size, inner_size, [0.8, 0.8, 0.8, 1.0]);
+            self.primitive.draw_rect(
+                x + offset,
+                y + offset,
+                inner_size,
+                inner_size,
+                [0.8, 0.8, 0.8, 1.0],
+            );
         }
 
-        self.text.draw_text(text, x + size + 8.0, y + 2.0, 14.0, [1.0, 1.0, 1.0, 1.0]);
+        self.text
+            .draw_text(text, x + size + 8.0, y + 2.0, 14.0, [1.0, 1.0, 1.0, 1.0]);
 
         new_checked
     }
@@ -145,19 +183,32 @@ impl UiContext {
     pub fn radio_button(&mut self, selected: bool, text: &str, x: f32, y: f32) -> bool {
         let size = 20.0;
         let mouse_pos = self.mouse_pos;
-        let hovered = mouse_pos.x >= x && mouse_pos.x <= x + size && mouse_pos.y >= y && mouse_pos.y <= y + size;
+        let hovered = mouse_pos.x >= x
+            && mouse_pos.x <= x + size
+            && mouse_pos.y >= y
+            && mouse_pos.y <= y + size;
         let clicked = hovered && self.mouse_clicked;
 
-        let color = if hovered { [0.4, 0.4, 0.4, 1.0] } else { [0.2, 0.2, 0.2, 1.0] };
+        let color = if hovered {
+            [0.4, 0.4, 0.4, 1.0]
+        } else {
+            [0.2, 0.2, 0.2, 1.0]
+        };
         self.primitive.draw_circle(x, y, size / 2.0, color);
 
         if selected {
             let inner_size = size * 0.6;
             let offset = (size - inner_size) / 2.0;
-            self.primitive.draw_circle(x + offset, y + offset, inner_size / 2.0, [0.8, 0.8, 0.8, 1.0]);
+            self.primitive.draw_circle(
+                x + offset,
+                y + offset,
+                inner_size / 2.0,
+                [0.8, 0.8, 0.8, 1.0],
+            );
         }
 
-        self.text.draw_text(text, x + size + 8.0, y + 2.0, 14.0, [1.0, 1.0, 1.0, 1.0]);
+        self.text
+            .draw_text(text, x + size + 8.0, y + 2.0, 14.0, [1.0, 1.0, 1.0, 1.0]);
 
         clicked
     }
