@@ -17,12 +17,13 @@ pub use control::{Control2D, FirstPersonControl, FlyControl, FreeOrbitControl, O
 pub use culling::{Frustum, FrustumCuller, Intersection, Plane};
 pub use geometry::{
     Aabb, Axes, BoundingBoxMesh, Circle, Geometry, InstancedMesh, LineStrip, Lines, Mesh,
-    Rectangle, Skybox, Terrain, TerrainLod, TerrainMaterial, TerrainUniform,
+    Rectangle, Skybox, Terrain, TerrainLod,
 };
 pub use light::{AmbientLight, Attenuation, DirectionalLight, Light, PointLight, SpotLight};
 pub use material::{
     ColorMaterial, DepthMaterial, GridMaterial, LineMaterial, Material, ModelUniform,
-    NormalMaterial, PbrMaterial, PhongMaterial, PositionMaterial, UVMaterial, UnlitMaterial,
+    NormalMaterial, PbrMaterial, PhongMaterial, PositionMaterial, TerrainMaterial, TerrainUniform,
+    UVMaterial, UnlitMaterial,
 };
 pub use object::{Gm, Object};
 pub use shadow::{DirectionalShadow, ShadowConfig, ShadowMap, ShadowUniform};

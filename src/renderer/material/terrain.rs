@@ -1,4 +1,7 @@
-//! PBR (Physically Based Rendering) material
+//! Terrain material with height-based coloring
+//!
+//! Provides a material that blends between two colors based on vertex height,
+//! with Blinn-Phong lighting.
 
 use super::traits::{Material, ModelUniform};
 use crate::context::WgpuContext;
@@ -9,90 +12,70 @@ use crate::renderer::light::Light;
 use crate::renderer::viewer::{CameraUniform, Viewer};
 use glam::Mat4;
 
-/// PBR material uniform data.
+/// Terrain uniform data for GPU.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct PbrUniform {
-    /// Base color (albedo) RGBA.
-    pub base_color: [f32; 4],
-    /// Emissive color RGB + padding.
-    pub emissive: [f32; 4],
-    /// Metallic factor.
-    pub metallic: f32,
-    /// Roughness factor.
-    pub roughness: f32,
-    /// Ambient occlusion factor.
-    pub ao: f32,
-    /// Padding.
-    pub _padding: f32,
+pub struct TerrainUniform {
+    pub min_height: f32,
+    pub max_height: f32,
+    pub _padding0: f32,
+    pub _padding1: f32,
+    pub color_low: [f32; 4],
+    pub color_high: [f32; 4],
 }
 
-impl Default for PbrUniform {
-    fn default() -> Self {
-        Self {
-            base_color: [1.0, 1.0, 1.0, 1.0],
-            emissive: [0.0, 0.0, 0.0, 0.0],
-            metallic: 0.0,
-            roughness: 0.5,
-            ao: 1.0,
-            _padding: 0.0,
-        }
-    }
-}
-
-/// PBR material with metallic-roughness workflow.
-pub struct PbrMaterial {
+/// Material for terrain with height-based coloring.
+///
+/// Uses a custom shader that blends between a low-altitude color and a high-altitude
+/// color based on vertex height.
+pub struct TerrainMaterial {
     pipeline: wgpu::RenderPipeline,
     camera_buffer: RawUniformBuffer,
     camera_bind_group: wgpu::BindGroup,
     model_buffer: RawUniformBuffer,
     model_bind_group: wgpu::BindGroup,
-    pbr_buffer: RawUniformBuffer,
-    pbr_bind_group: wgpu::BindGroup,
+    terrain_buffer: RawUniformBuffer,
+    terrain_bind_group: wgpu::BindGroup,
 
-    /// Base color (albedo).
-    pub base_color: [f32; 4],
-    /// Metallic factor (0.0 = dielectric, 1.0 = metal).
-    pub metallic: f32,
-    /// Roughness factor (0.0 = smooth, 1.0 = rough).
-    pub roughness: f32,
-    /// Emissive color.
-    pub emissive: [f32; 3],
-    /// Ambient occlusion factor.
-    pub ao: f32,
+    /// Low altitude color RGBA.
+    pub color_low: [f32; 4],
+    /// High altitude color RGBA.
+    pub color_high: [f32; 4],
+    /// Minimum height for color mapping.
+    pub min_height: f32,
+    /// Maximum height for color mapping.
+    pub max_height: f32,
 }
 
-impl PbrMaterial {
-    /// Create a new PBR material with default values.
+impl TerrainMaterial {
+    /// Create a new terrain material with default colors.
     pub fn new(ctx: &WgpuContext, format: wgpu::TextureFormat) -> anyhow::Result<Self> {
         Self::with_params(
             ctx,
             format,
-            [1.0, 1.0, 1.0, 1.0],
+            [0.2, 0.5, 0.1, 1.0],  // green low
+            [0.8, 0.8, 0.85, 1.0], // snow high
             0.0,
-            0.5,
-            [0.0, 0.0, 0.0],
-            1.0,
+            10.0,
         )
     }
 
-    /// Create a new PBR material with custom parameters.
+    /// Create a new terrain material with custom parameters.
     pub fn with_params(
         ctx: &WgpuContext,
         format: wgpu::TextureFormat,
-        base_color: [f32; 4],
-        metallic: f32,
-        roughness: f32,
-        emissive: [f32; 3],
-        ao: f32,
+        color_low: [f32; 4],
+        color_high: [f32; 4],
+        min_height: f32,
+        max_height: f32,
     ) -> anyhow::Result<Self> {
-        let shader = include_str!("../../shaders/pbr.wgsl");
+        let shader = include_str!("../../shaders/terrain.wgsl");
 
         // Camera bind group layout (group 0)
         let camera_bind_group_layout =
             ctx.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("pbr camera bind group layout"),
+                    label: Some("terrain camera bind group layout"),
                     entries: &[wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
@@ -109,7 +92,7 @@ impl PbrMaterial {
         let model_bind_group_layout =
             ctx.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("pbr model bind group layout"),
+                    label: Some("terrain model bind group layout"),
                     entries: &[wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         visibility: wgpu::ShaderStages::VERTEX,
@@ -122,14 +105,14 @@ impl PbrMaterial {
                     }],
                 });
 
-        // PBR parameters bind group layout (group 2)
-        let pbr_bind_group_layout =
+        // Terrain bind group layout (group 2)
+        let terrain_bind_group_layout =
             ctx.device
                 .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("pbr params bind group layout"),
+                    label: Some("terrain params bind group layout"),
                     entries: &[wgpu::BindGroupLayoutEntry {
                         binding: 0,
-                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             has_dynamic_offset: false,
@@ -140,12 +123,12 @@ impl PbrMaterial {
                 });
 
         let pipeline = PipelineBuilder::new(ctx)
-            .label("pbr material pipeline")
+            .label("terrain material pipeline")
             .shader(shader)
             .vertex_layout(Vertex::layout())
             .bind_group_layout(&camera_bind_group_layout)
             .bind_group_layout(&model_bind_group_layout)
-            .bind_group_layout(&pbr_bind_group_layout)
+            .bind_group_layout(&terrain_bind_group_layout)
             .color_format(format)
             .depth(DepthState::read_write())
             .blend(BlendState::Opaque)
@@ -156,11 +139,11 @@ impl PbrMaterial {
         let camera_buffer = RawUniformBuffer::new(
             ctx,
             std::mem::size_of::<CameraUniform>() as u64,
-            Some("pbr camera uniform"),
+            Some("terrain camera uniform"),
         );
 
         let camera_bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("pbr camera bind group"),
+            label: Some("terrain camera bind group"),
             layout: &camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -172,11 +155,11 @@ impl PbrMaterial {
         let model_buffer = RawUniformBuffer::new(
             ctx,
             std::mem::size_of::<ModelUniform>() as u64,
-            Some("pbr model uniform"),
+            Some("terrain model uniform"),
         );
 
         let model_bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("pbr model bind group"),
+            label: Some("terrain model bind group"),
             layout: &model_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
@@ -184,19 +167,19 @@ impl PbrMaterial {
             }],
         });
 
-        // Create PBR parameters buffer
-        let pbr_buffer = RawUniformBuffer::new(
+        // Create terrain uniform buffer
+        let terrain_buffer = RawUniformBuffer::new(
             ctx,
-            std::mem::size_of::<PbrUniform>() as u64,
-            Some("pbr params uniform"),
+            std::mem::size_of::<TerrainUniform>() as u64,
+            Some("terrain params uniform"),
         );
 
-        let pbr_bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("pbr params bind group"),
-            layout: &pbr_bind_group_layout,
+        let terrain_bind_group = ctx.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("terrain params bind group"),
+            layout: &terrain_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: pbr_buffer.buffer().as_entire_binding(),
+                resource: terrain_buffer.buffer().as_entire_binding(),
             }],
         });
 
@@ -206,23 +189,17 @@ impl PbrMaterial {
             camera_bind_group,
             model_buffer,
             model_bind_group,
-            pbr_buffer,
-            pbr_bind_group,
-            base_color,
-            metallic,
-            roughness,
-            emissive,
-            ao,
+            terrain_buffer,
+            terrain_bind_group,
+            color_low,
+            color_high,
+            min_height,
+            max_height,
         })
-    }
-
-    /// Get the PBR bind group.
-    pub fn pbr_bind_group(&self) -> &wgpu::BindGroup {
-        &self.pbr_bind_group
     }
 }
 
-impl Material for PbrMaterial {
+impl Material for TerrainMaterial {
     fn pipeline(&self) -> &wgpu::RenderPipeline {
         &self.pipeline
     }
@@ -236,7 +213,7 @@ impl Material for PbrMaterial {
     }
 
     fn extra_bind_groups(&self) -> Vec<(u32, &wgpu::BindGroup)> {
-        vec![(2, &self.pbr_bind_group)]
+        vec![(2, &self.terrain_bind_group)]
     }
 
     fn update_uniforms(
@@ -252,14 +229,14 @@ impl Material for PbrMaterial {
         let model_uniform = ModelUniform::from_matrix(model_matrix);
         self.model_buffer.write(ctx, &model_uniform);
 
-        let pbr_uniform = PbrUniform {
-            base_color: self.base_color,
-            emissive: [self.emissive[0], self.emissive[1], self.emissive[2], 0.0],
-            metallic: self.metallic,
-            roughness: self.roughness,
-            ao: self.ao,
-            _padding: 0.0,
+        let terrain_uniform = TerrainUniform {
+            min_height: self.min_height,
+            max_height: self.max_height,
+            _padding0: 0.0,
+            _padding1: 0.0,
+            color_low: self.color_low,
+            color_high: self.color_high,
         };
-        self.pbr_buffer.write(ctx, &pbr_uniform);
+        self.terrain_buffer.write(ctx, &terrain_uniform);
     }
 }

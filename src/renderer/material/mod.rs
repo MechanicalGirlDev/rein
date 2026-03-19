@@ -10,7 +10,8 @@ mod normal;
 mod pbr;
 mod phong;
 mod position;
-pub mod traits;
+mod terrain;
+mod traits;
 mod unlit;
 mod uv;
 
@@ -22,6 +23,7 @@ pub use normal::NormalMaterial;
 pub use pbr::PbrMaterial;
 pub use phong::PhongMaterial;
 pub use position::PositionMaterial;
+pub use terrain::{TerrainMaterial, TerrainUniform};
 pub use traits::{Material, ModelUniform};
 pub use unlit::UnlitMaterial;
 pub use uv::UVMaterial;
