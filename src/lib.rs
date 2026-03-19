@@ -51,14 +51,17 @@ pub use core::{
 };
 
 #[cfg(feature = "window")]
-pub use renderer::{FirstPersonControl, FlyControl, OrbitControl, Viewer};
+pub use renderer::{
+    Control2D, FirstPersonControl, FlyControl, FreeOrbitControl, OrbitControl, Viewer,
+};
 
 pub use renderer::{
-    Aabb, AmbientLight, Attenuation, Axes, BoundingBoxMesh, Camera, ColorMaterial, DepthMaterial,
-    DirectionalLight, DirectionalShadow, Frustum, FrustumCuller, Geometry, Gm, GridMaterial,
-    InstancedMesh, Intersection, Light, LineMaterial, LineStrip, Lines, Material, Mesh,
-    ModelUniform, NormalMaterial, Object, PbrMaterial, PhongMaterial, Plane, PointLight,
-    Projection, ShadowConfig, ShadowMap, ShadowUniform, SpotLight, UnlitMaterial,
+    Aabb, AmbientLight, Attenuation, Axes, BoundingBoxMesh, Camera, Circle, ColorMaterial,
+    DepthMaterial, DirectionalLight, DirectionalShadow, Frustum, FrustumCuller, Geometry, Gm,
+    GridMaterial, InstancedMesh, Intersection, Light, LineMaterial, LineStrip, Lines, Material,
+    Mesh, ModelUniform, NormalMaterial, Object, PbrMaterial, PhongMaterial, Plane, PointLight,
+    PositionMaterial, Projection, Rectangle, ShadowConfig, ShadowMap, ShadowUniform, Skybox,
+    SpotLight, Terrain, TerrainLod, TerrainMaterial, TerrainUniform, UVMaterial, UnlitMaterial,
 };
 
 pub use urdf::{RobotModel, UrdfLoader};

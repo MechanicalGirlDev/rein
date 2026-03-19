@@ -13,13 +13,16 @@ pub mod shadow;
 pub mod viewer;
 
 #[cfg(feature = "window")]
-pub use control::{FirstPersonControl, FlyControl, OrbitControl};
+pub use control::{Control2D, FirstPersonControl, FlyControl, FreeOrbitControl, OrbitControl};
 pub use culling::{Frustum, FrustumCuller, Intersection, Plane};
-pub use geometry::{Aabb, Axes, BoundingBoxMesh, Geometry, InstancedMesh, LineStrip, Lines, Mesh};
+pub use geometry::{
+    Aabb, Axes, BoundingBoxMesh, Circle, Geometry, InstancedMesh, LineStrip, Lines, Mesh,
+    Rectangle, Skybox, Terrain, TerrainLod, TerrainMaterial, TerrainUniform,
+};
 pub use light::{AmbientLight, Attenuation, DirectionalLight, Light, PointLight, SpotLight};
 pub use material::{
     ColorMaterial, DepthMaterial, GridMaterial, LineMaterial, Material, ModelUniform,
-    NormalMaterial, PbrMaterial, PhongMaterial, UnlitMaterial,
+    NormalMaterial, PbrMaterial, PhongMaterial, PositionMaterial, UVMaterial, UnlitMaterial,
 };
 pub use object::{Gm, Object};
 pub use shadow::{DirectionalShadow, ShadowConfig, ShadowMap, ShadowUniform};
