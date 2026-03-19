@@ -140,6 +140,11 @@ pub fn render_system(
         render_pass.set_bind_group(0, cmd.material.camera_bind_group(), &[]);
         render_pass.set_bind_group(1, cmd.material.model_bind_group(), &[]);
 
+        // Bind any additional material-specific bind groups (e.g. group 2+)
+        for (group, bind_group) in cmd.material.extra_bind_groups() {
+            render_pass.set_bind_group(group, bind_group, &[]);
+        }
+
         // Draw the mesh manually (avoiding the Geometry::draw lifetime issue).
         render_pass.set_vertex_buffer(0, cmd.mesh.vertex_buffer().slice());
         if let Some(index_buffer) = cmd.mesh.index_buffer() {
