@@ -4,15 +4,23 @@
 
 mod axes;
 mod bounds;
+mod circle;
 mod instanced;
 mod lines;
 mod mesh;
+mod rectangle;
+pub mod skybox;
+pub mod terrain;
 
 pub use axes::Axes;
 pub use bounds::BoundingBoxMesh;
+pub use circle::Circle;
 pub use instanced::InstancedMesh;
 pub use lines::{LineStrip, Lines};
 pub use mesh::Mesh;
+pub use rectangle::Rectangle;
+pub use skybox::Skybox;
+pub use terrain::{Terrain, TerrainLod, TerrainMaterial, TerrainUniform};
 
 use crate::core::buffer::{IndexBuffer, VertexBuffer};
 use glam::Vec3;
