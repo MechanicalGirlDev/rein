@@ -42,7 +42,11 @@ fn vs_main(input: VertexInput) -> VertexOutput {
     // Camera right and up vectors from the view-projection matrix inverse
     // We compute them from the camera eye and an assumed up direction
     let forward = normalize(camera.eye.xyz - world_center);
-    let world_up = vec3<f32>(0.0, 1.0, 0.0);
+    var world_up = vec3<f32>(0.0, 1.0, 0.0);
+    // When forward is nearly parallel to world_up, switch to an alternative up vector
+    if abs(dot(forward, world_up)) > 0.999 {
+        world_up = vec3<f32>(0.0, 0.0, 1.0);
+    }
     let right = normalize(cross(world_up, forward));
     let up = cross(forward, right);
 

@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
         control: OrbitControl,
         sphere: Option<Gm<Mesh, NormalMaterial>>,
         cube: Option<Gm<Mesh, NormalMaterial>>,
-        torus: Option<Gm<Mesh, NormalMaterial>>,
+        sphere_small: Option<Gm<Mesh, NormalMaterial>>,
     }
 
     let state = State {
@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
         control: OrbitControl::new(Vec3::ZERO, 2.0, 20.0),
         sphere: None,
         cube: None,
-        torus: None,
+        sphere_small: None,
     };
 
     window.render_loop(state, |state, frame| {
@@ -56,7 +56,7 @@ fn main() -> anyhow::Result<()> {
             let mat = NormalMaterial::new(frame.ctx, frame.surface_format)
                 .expect("Failed to create material");
             let mesh = Mesh::sphere(frame.ctx, 0.8, 48, 32, [1.0, 1.0, 1.0]);
-            state.torus = Some(Gm::new(mesh, mat).with_position(2.5, 0.0, 0.0));
+            state.sphere_small = Some(Gm::new(mesh, mat).with_position(2.5, 0.0, 0.0));
         }
 
         state.camera.set_viewport(frame.viewport);
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
         if let Some(obj) = &mut state.cube {
             obj.transform = rotation;
         }
-        if let Some(obj) = &mut state.torus {
+        if let Some(obj) = &mut state.sphere_small {
             obj.transform = Mat4::from_translation(Vec3::new(2.5, 0.0, 0.0)) * rotation;
         }
 
@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
             if let Some(obj) = &state.cube {
                 obj.render(frame.ctx, &state.camera, &lights, &mut pass);
             }
-            if let Some(obj) = &state.torus {
+            if let Some(obj) = &state.sphere_small {
                 obj.render(frame.ctx, &state.camera, &lights, &mut pass);
             }
         }
