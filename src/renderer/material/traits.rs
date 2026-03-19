@@ -16,6 +16,17 @@ pub trait Material {
     /// Get the model bind group.
     fn model_bind_group(&self) -> &wgpu::BindGroup;
 
+    /// Return additional bind groups beyond camera (group 0) and model (group 1).
+    ///
+    /// Each entry is `(group_index, bind_group)`. For example, a material that uses
+    /// a parameter buffer at group 2 would return `vec![(2, &self.params_bind_group)]`.
+    ///
+    /// The default implementation returns an empty slice, so materials that only need
+    /// groups 0 and 1 do not need to override this.
+    fn extra_bind_groups(&self) -> Vec<(u32, &wgpu::BindGroup)> {
+        Vec::new()
+    }
+
     /// Update uniforms before rendering.
     fn update_uniforms(
         &self,

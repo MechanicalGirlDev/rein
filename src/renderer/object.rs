@@ -86,6 +86,11 @@ impl<G: Geometry, M: Material> Object for Gm<G, M> {
         render_pass.set_bind_group(0, self.material.camera_bind_group(), &[]);
         render_pass.set_bind_group(1, self.material.model_bind_group(), &[]);
 
+        // Bind any additional material-specific bind groups (e.g. group 2+)
+        for (group, bind_group) in self.material.extra_bind_groups() {
+            render_pass.set_bind_group(group, bind_group, &[]);
+        }
+
         // Set vertex buffer
         render_pass.set_vertex_buffer(0, self.geometry.vertex_buffer().slice());
 
