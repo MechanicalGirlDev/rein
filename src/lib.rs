@@ -59,9 +59,10 @@ pub use renderer::{
     Aabb, AmbientLight, Attenuation, Axes, BoundingBoxMesh, Camera, Circle, ColorMaterial,
     DepthMaterial, DirectionalLight, DirectionalShadow, Frustum, FrustumCuller, Geometry, Gm,
     GridMaterial, InstancedMesh, Intersection, Light, LineMaterial, LineStrip, Lines, Material,
-    Mesh, ModelUniform, NormalMaterial, Object, PbrMaterial, PhongMaterial, Plane, PointLight,
-    PositionMaterial, Projection, Rectangle, ShadowConfig, ShadowMap, ShadowUniform, Skybox,
-    SpotLight, Terrain, TerrainLod, TerrainMaterial, TerrainUniform, UVMaterial, UnlitMaterial,
+    Mesh, ModelUniform, NormalMaterial, Object, ParticleData, ParticleSystem, PbrMaterial,
+    PhongMaterial, Plane, PointLight, PositionMaterial, Projection, Rectangle, ShadowConfig,
+    ShadowMap, ShadowUniform, Skybox, SpotLight, SpriteMaterial, Sprites, Terrain, TerrainLod,
+    TerrainMaterial, TerrainUniform, UVMaterial, UnlitMaterial,
 };
 
 pub use urdf::{RobotModel, UrdfLoader};

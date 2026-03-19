@@ -8,8 +8,10 @@ mod circle;
 mod instanced;
 mod lines;
 mod mesh;
+mod particles;
 mod rectangle;
 pub mod skybox;
+mod sprites;
 mod terrain;
 
 pub use axes::Axes;
@@ -18,8 +20,10 @@ pub use circle::Circle;
 pub use instanced::InstancedMesh;
 pub use lines::{LineStrip, Lines};
 pub use mesh::Mesh;
+pub use particles::{ParticleData, ParticleSystem};
 pub use rectangle::Rectangle;
 pub use skybox::Skybox;
+pub use sprites::Sprites;
 pub use terrain::{Terrain, TerrainLod};
 
 use crate::core::buffer::{IndexBuffer, VertexBuffer};

@@ -1,0 +1,10 @@
+[package]
+name = "fog_effect"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rein = { path = "../.." }
+wgpu = "28"
+glam = "0.31"
+anyhow = "1"
