@@ -1,0 +1,9 @@
+[package]
+name = "shapes2d"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rein = { path = "../..", features = ["gui"] }
+glam = "0.31"
+anyhow = "1"
